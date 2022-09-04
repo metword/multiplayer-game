@@ -11,11 +11,12 @@ const onChatSubmitted = (sock) => (e) => {
     const input = document.querySelector("#input");
     const text = input.value;
     input.value = "";
+    console.log(text);
     sock.emit("message", text);
 }
 
 (() => {
-    const sock = io();
+    const sock = io("https://ppl.herokuapp.com/");
 
     sock.on("message", (text) => {
         log(text);
