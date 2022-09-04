@@ -11,7 +11,6 @@ const onChatSubmitted = (sock) => (e) => {
     const input = document.querySelector("#input");
     const text = input.value;
     input.value = "";
-    console.log(text);
     sock.emit("message", text);
 }
 
@@ -31,5 +30,9 @@ const onChatSubmitted = (sock) => (e) => {
     .addEventListener("submit", onChatSubmitted(sock));
 
 })();
+
+document
+    .querySelector("#chat-widget")
+    .addEventListener("submit", console.log(document.querySelector("#input").value));
 
 
