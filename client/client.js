@@ -1,8 +1,11 @@
 const socket = io();
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
-const serverEntities = [];
 const tps = 1000 / 60;
+
+let clientId = undefined;
+let serverEntities = null;
+
 const keyPresses = {
     up : false,
     left : false,
@@ -13,7 +16,7 @@ const keyPresses = {
 class Entity {
     x;
     y;
-    constructor(x , y) {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
         //console.log(`CREATING ENTITY AT (${x}, ${y})`)
@@ -52,6 +55,16 @@ function render() {
     ctx.fill();
 
     //renders provided by the server
+    if (serverEntities !== null) {
+        //console.log("SERVER ENTITIES !== NULL")
+        for (const entity of serverEntities) {
+            if (entity.id !== clientId  && entity.position !== null) {
+                ctx.beginPath();
+                ctx.rect(entity.position.x,entity.position.y,50,50);
+                ctx.fill();
+            }
+        }
+    }
 }
 
 function updatePosition() {
@@ -76,6 +89,10 @@ function updatePosition() {
     //drag
     velocity.x *= 0.8;
     velocity.y *= 0.8;
+
+    if (Math.abs(velocity.x) < 1) velocity.x = 0;
+    if (Math.abs(velocity.y) < 1) velocity.y = 0;
+
 }
 
 window.addEventListener("keydown", (key) => {
@@ -104,12 +121,17 @@ window.addEventListener("keyup", (key) => {
     }
 });
 
-socket.on("init", () => {
+socket.on("init", (id) => {
     console.log("Initializing...");
+    clientId = id;
 });
 
-socket.on("message", (text) => {
+socket.on("getpos", () => {
+    socket.emit("pos", (clientEntity));
+});
 
+socket.on("allpos", (entitites) => {
+    serverEntities = entitites;
 });
 /*const log = (text) => {
     const list = document.querySelector("#message-history");
