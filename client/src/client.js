@@ -15,9 +15,9 @@ const onChatSubmitted = (sock) => (e) => {
 }
 
 (() => {
-    const sock = io("https://pacific-cliffs-13549.herokuapp.com/");
+    const server = io("https://pacific-cliffs-13549.herokuapp.com/");
 
-    sock.on("message", (text) => {
+    server.on("message", (text) => {
         log(text);
     });
 
@@ -27,6 +27,6 @@ const onChatSubmitted = (sock) => (e) => {
 
     document
     .querySelector("#chat-widget")
-    .addEventListener("submit", onChatSubmitted(sock));
+    .addEventListener("submit", onChatSubmitted(server));
 
 })();
