@@ -4,12 +4,12 @@ const express = require("express");
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {transports: ['websocket']}, {
+const io = socketIO(server, {transports: ['websocket']});/*, {
   cors: {
     origin: "https://glistening-croissant-ee4e9d.netlify.app",
     credentials: false,
   },
-});
+});*/
 
 io.on("connection", client => {
     client.emit("message", "You are connected!");
