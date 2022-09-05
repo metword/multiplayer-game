@@ -1,4 +1,13 @@
-const io = require("socket.io")();
+const http = require("http");
+const socket_io = require("socket.io");
+
+const httpServer = http.createServer();
+const io = new socket_io.Server(httpServer, {
+  cors: {
+    origin: "https://pacific-cliffs-13549.herokuapp.com/",
+  },
+});
+
 
 //const http = require("http");
 //const express = require("express");
