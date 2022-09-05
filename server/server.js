@@ -1,4 +1,12 @@
-io = require("socket.io");
+const http = require("http");
+const socket_io = require("socket.io");
+
+const httpServer = http.createServer();
+const io = new socket_io.Server(httpServer, {
+  cors: {
+    origin: "http://127.0.0.1:8080",
+  },
+});
 
 io.on("connection", client => {
     client.emit("message", "You are connected!");
