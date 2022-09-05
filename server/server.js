@@ -1,21 +1,19 @@
 const http = require("http");
 const socket_io = require("socket.io");
-
+//const express = require("express");
+//const app = express();
+//app.use(express.static(`${__dirname}/../client`));
 const httpServer = http.createServer();
+//const server = http.createServer(app);
+
 const io = new socket_io.Server(httpServer, {
   cors: {
-    origin: "https://pacific-cliffs-13549.herokuapp.com/",
+    origin: "http://pacific-cliffs-13549.herokuapp.com/",
   },
 });
 
 
-const express = require("express");
 
-const app = express();
-
-app.use(express.static(`${__dirname}/../client`))
-
-//const server = http.createServer(app);
 
 
 io.on("connection", client => {
