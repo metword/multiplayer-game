@@ -1,18 +1,4 @@
-const http = require("http");
-const socket_io = require("socket.io");
-//const express = require("express");
-const app = express();
-//app.use(express.static(`${__dirname}/../client`));
-app.UseCors(CorsOptions.AllowAll);
-const httpServer = http.createServer();
-//const server = http.createServer(app);
-
-const io = new socket_io.Server(httpServer, {
-  cors: {
-    origin: "https://glistening-croissant-ee4e9d.netlify.app",
-  },
-});
-
+io = require("socket.io");
 
 io.on("connection", client => {
     client.emit("message", "You are connected!");
