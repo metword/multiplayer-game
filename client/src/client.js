@@ -1,3 +1,5 @@
+const server = io("https://pacific-cliffs-13549.herokuapp.com/");
+
 const log = (text) => {
     const list = document.querySelector("#message-history");
     const elem = document.createElement("div");
@@ -6,16 +8,17 @@ const log = (text) => {
     list.prepend(elem);
 }
 
-const onChatSubmitted = (sock) => (e) => {
+const onChatSubmitted = (e) => {
     e.preventDefault();
     const input = document.querySelector("#input");
     const text = input.value;
     input.value = "";
-    sock.emit("message", text);
+    server.emit("message", text);
 }
 
 (() => {
-    const server = io("https://pacific-cliffs-13549.herokuapp.com/");
+    
+                //     https://pacific-cliffs-13549.herokuapp.com/
 
     server.on("message", (text) => {
         log(text);
@@ -27,6 +30,6 @@ const onChatSubmitted = (sock) => (e) => {
 
     document
     .querySelector("#chat-widget")
-    .addEventListener("submit", onChatSubmitted(server));
+    .addEventListener("submit", onChatSubmitted);
 
 })();
