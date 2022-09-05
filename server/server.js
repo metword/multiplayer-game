@@ -1,8 +1,9 @@
 const http = require("http");
 const socket_io = require("socket.io");
 //const express = require("express");
-//const app = express();
+const app = express();
 //app.use(express.static(`${__dirname}/../client`));
+app.UseCors(CorsOptions.AllowAll);
 const httpServer = http.createServer();
 //const server = http.createServer(app);
 
