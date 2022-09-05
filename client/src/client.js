@@ -1,4 +1,6 @@
-const server = io("https://pacific-cliffs-13549.herokuapp.com", {'transports': ['websocket', 'polling']});
+const server = io("https://pacific-cliffs-13549.herokuapp.com", {'transports': ['websocket', 'polling']}, {
+    allowEIO3: true,
+});
 /*
 const log = (text) => {
     const list = document.querySelector("#message-history");
