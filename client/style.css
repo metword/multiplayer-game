@@ -1,28 +1,35 @@
+html {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0px;
+}
+
 #chat {
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
-    font-size: 16px;
-    width: 50%;    
+    padding: 4px;
 }
 
 #input {
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    width: 100%;
+    height: 32px;
+
     font-size: 16px;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    
     border: 2px solid rgb(0, 0, 0);
     border-radius: 4px;
-    box-sizing: border-box;
-    width : 100%;
-    height: 32px;
-}
+    box-sizing: border-box;   
 
-#message-history {
-    margin: 0px;
-    padding: 4px;
-    height: 360px;
     position: relative;
-    overflow-y: hidden;
+    z-index: 1;
 }
 
-.chat-message {
-    overflow-wrap: break-word;
+#canvas {
+    position: absolute;
+    z-index: 0;
 }
-
