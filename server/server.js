@@ -9,7 +9,7 @@ const httpServer = http.createServer();
 
 const io = new socket_io.Server(httpServer, {
   cors: {
-    origin: "https://glistening-croissant-ee4e9d.netlify.app:8080",
+    origin: "https://pacific-cliffs-13549.herokuapp.com/",
   },
 });
 
