@@ -1,7 +1,7 @@
 const server = io("https://pacific-cliffs-13549.herokuapp.com", {'transports': ['websocket', 'polling']}, {
     allowEIO3: true,
 });
-/*
+
 const log = (text) => {
     const list = document.querySelector("#message-history");
     const elem = document.createElement("div");
@@ -19,9 +19,6 @@ const onChatSubmitted = (e) => {
 }
 
 (() => {
-    
-                //     https://pacific-cliffs-13549.herokuapp.com/
-
     server.on("message", (text) => {
         log(text);
     });
@@ -34,4 +31,4 @@ const onChatSubmitted = (e) => {
     .querySelector("#chat-widget")
     .addEventListener("submit", onChatSubmitted);
 
-})();*/
+})();
