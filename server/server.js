@@ -1,32 +1,24 @@
-const http = require("http");
-const socketIO = require("socket.io");
 const express = require("express");
-
+const path = require("path");
+const http = require("http");
+const PORT = process.env.PORT || 3000;
+const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, {'transports': ['websocket', 'polling']}, {
-    allowEIO3: true,
-    cors: {
-        origin: "https://glistening-croissant-ee4e9d.netlify.app",
-        credentials: true,
-    }
-});
+const io = socketio(server);
 
-io.on("connection", client => {
-    client.emit("message", "You are connected!");
+// Set static folder.
+app.use(express.static(path.join(__dirname,"../client")));
 
-    client.on("message", (text) => {
-        io.emit("message", text);
+// Start server
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+// Handle a socket connection request from web client
+io.on("connection", (socket) => {
+    socket.emit ("message","Someone connected!");
+
+    socket.on("message", (text) => {
+        io.emit("message",text);
     });
+
 });
-
-io.listen(process.env.PORT || 3000);
-
-//server.on("error", (err) => {
-//    console.error(err);
-//});
-
-//heroku
-//server.listen(process.env.PORT || 49490, () => {
-//    console.log("Server is running!");
-//});
