@@ -8,14 +8,15 @@ const server = http.createServer(app);
 const io = socketio(server);
 
 // Set static folder.
-app.use(express.static(path.join(__dirname,"../client")));
+app.use(express.static(path.join(__dirname,"/../../client")));
 
 // Start server
 server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
 // Handle a socket connection request from web client
 io.on("connection", (socket) => {
-    socket.emit ("message","Someone connected!");
+    console.log("Client connected!");
+    socket.emit ("message","Client connected!");
 
     socket.on("message", (text) => {
         io.emit("message",text);
