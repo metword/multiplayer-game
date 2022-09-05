@@ -24,6 +24,6 @@ server.on("error", (err) => {
 });
 
 //heroku
-server.listen(process.env.PORT || 8080, () => {
+server.listen(process.env.PORT || 49490, () => {
     console.log("Server is running!");
 });
