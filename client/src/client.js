@@ -1,4 +1,4 @@
-const server = io("https://pacific-cliffs-13549.herokuapp.com/");
+const server = io( );
 /*
 const log = (text) => {
     const list = document.querySelector("#message-history");
