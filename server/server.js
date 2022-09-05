@@ -5,6 +5,7 @@ const httpServer = http.createServer();
 const io = new socket_io.Server(httpServer, {
   cors: {
     origin: "https://glistening-croissant-ee4e9d.netlify.app",
+    credentials: true,
   },
 });
 
