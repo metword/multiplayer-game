@@ -15,6 +15,7 @@ server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 
 // Handle a socket connection request from web client
 io.on("connection", (socket) => {
+    socket.emit("init", ); //in the init function we could eventually pass in a position to start the player at.
     console.log("Client connected!");
     socket.emit ("message","Client connected!");
 
