@@ -1,8 +1,10 @@
 const http = require("http");
-const socket_io = require("socket.io");
+const socketIO = require("socket.io");
+const express = require("express");
 
-const server = http.createServer();
-const io = new socket_io.Server(server, {transports: ['websocket']}, {
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server, {transports: ['websocket']}, {
   cors: {
     origin: "https://glistening-croissant-ee4e9d.netlify.app",
     credentials: false,
