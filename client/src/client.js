@@ -15,14 +15,14 @@ const onChatSubmitted = (sock) => (e) => {
 }
 
 (() => {
-    const sock = io("https://ppl.herokuapp.com/");
+    const sock = io("https://pacific-cliffs-13549.herokuapp.com/");
 
     sock.on("message", (text) => {
         log(text);
     });
 
-    console.log(document.getElementById("chat-widget").style);
-    console.log(document.querySelector("#chat-widget").style);
+    //console.log(document.getElementById("chat-widget").style);
+    //console.log(document.querySelector("#chat-widget").style);
 
 
     document
@@ -30,9 +30,3 @@ const onChatSubmitted = (sock) => (e) => {
     .addEventListener("submit", onChatSubmitted(sock));
 
 })();
-
-document
-    .querySelector("#chat-widget")
-    .addEventListener("submit", console.log(document.querySelector("#input").value));
-
-
