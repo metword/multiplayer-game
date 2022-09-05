@@ -1,5 +1,5 @@
 const server = io("https://pacific-cliffs-13549.herokuapp.com/");
-
+/*
 const log = (text) => {
     const list = document.querySelector("#message-history");
     const elem = document.createElement("div");
@@ -32,4 +32,4 @@ const onChatSubmitted = (e) => {
     .querySelector("#chat-widget")
     .addEventListener("submit", onChatSubmitted);
 
-})();
+})();*/
