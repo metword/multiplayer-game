@@ -15,7 +15,7 @@ const onChatSubmitted = (sock) => (e) => {
 }
 
 (() => {
-    const server = io("http://pacific-cliffs-13549.herokuapp.com/");
+    const server = io("https://pacific-cliffs-13549.herokuapp.com/");
 
     server.on("message", (text) => {
         log(text);
