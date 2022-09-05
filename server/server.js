@@ -1,29 +1,30 @@
-const http = require("http");
-const express = require("express");
-const socketio = require("socket.io");
+const io = require("socket.io")();
 
-const app = express();
+//const http = require("http");
+//const express = require("express");
 
-app.use(express.static(`${__dirname}/../client`))
+//const app = express();
 
-const server = http.createServer(app);
-const io = socketio(server);
+//app.use(express.static(`${__dirname}/../client`))
 
-io.on("connection", (sock) => {
-    sock.emit("message", "You are connected!");
+//const server = http.createServer(app);
 
-    sock.on("message", (text) => {
+
+io.on("connection", client => {
+    client.emit("message", "You are connected!");
+
+    client.on("message", (text) => {
         io.emit("message", text);
     });
 });
 
+io.listen(process.env.PORT || 3000);
 
-
-server.on("error", (err) => {
-    console.error(err);
-});
+//server.on("error", (err) => {
+//    console.error(err);
+//});
 
 //heroku
-server.listen(process.env.PORT || 49490, () => {
-    console.log("Server is running!");
-});
+//server.listen(process.env.PORT || 49490, () => {
+//    console.log("Server is running!");
+//});
