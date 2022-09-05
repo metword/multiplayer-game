@@ -8,7 +8,7 @@ const io = socketIO(server, {'transports': ['websocket', 'polling']}, {
     allowEIO3: true,
     cors: {
         origin: "https://glistening-croissant-ee4e9d.netlify.app",
-        credentials: false,
+        credentials: true,
     }
 });
 
