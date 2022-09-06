@@ -71,8 +71,6 @@ function getUsers(callback) {
     
     database.query('SELECT * FROM users', (err, res) => {
         if (err) throw err;
-        //doSomething(res.val);
-        //console.log(res.rows);
         database.end();
         return callback(res.rows);
     });
