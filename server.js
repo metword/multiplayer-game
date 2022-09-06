@@ -6,7 +6,7 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const local = "postgresql://postgres:password@localhost:5432/postgres";
 
 // Set static folder.
@@ -60,12 +60,24 @@ io.on("connection", (socket) => {
 
 });
 
+const pool = (() => {
+    if (process.env.NODE_ENV !== 'production') {
+        return new Pool({
+            connectionString: local,
+            ssl: false
+        });
+    } else {
+        return new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: {
+                rejectUnauthorized: false
+              }
+        });
+    } 
+})();
 
 function getUsers(callback) {
-    const database = new Client({
-        connectionString: process.env.DATABASE_URL || local,
-        ssl: process.env.DATABASE_URL ? true : false,
-    });
+    const database = pool;
     
     database.connect();
     
@@ -77,10 +89,7 @@ function getUsers(callback) {
 }
 
 function createUser(username, password, callback) {
-    const database = new Client({
-        connectionString: process.env.DATABASE_URL || local,
-        ssl: process.env.DATABASE_URL ? true : false,
-    });
+    const database = pool;
 
     database.connect();
 
@@ -96,6 +105,6 @@ getUsers(function(result) {
     console.log(result);
 });
 
-createUser('metword', '12345', function(result) {
-    console.log(result);
-});
+//createUser('metword', '12345', function(result) {
+//    console.log(result);
+//});
