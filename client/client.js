@@ -29,8 +29,8 @@ const velocity = {
 }
 
 window.onload = window.onresize = function () {
-    canvas.height = window.innerHeight;
-    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight-48;
+    canvas.width = window.innerWidth-12;
 }
 
 // CLIENT DUTY!!!

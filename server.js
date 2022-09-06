@@ -6,6 +6,8 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
+const { Client } = require('pg');
+const local = "postgresql://postgres:password@localhost:5432/postgres";
 
 // Set static folder.
 app.use(express.static(path.join(__dirname,"/client")));
@@ -56,4 +58,46 @@ io.on("connection", (socket) => {
         thisEntity.position = clientEntity;
     });
 
+});
+
+
+function getUsers(callback) {
+    const database = new Client({
+        connectionString: process.env.DATABASE_URL || local,
+        ssl: process.env.DATABASE_URL ? true : false,
+    });
+    
+    database.connect();
+    
+    database.query('SELECT * FROM users', (err, res) => {
+        if (err) throw err;
+        //doSomething(res.val);
+        //console.log(res.rows);
+        database.end();
+        return callback(res.rows);
+    });
+}
+
+function createUser(username, password, callback) {
+    const database = new Client({
+        connectionString: process.env.DATABASE_URL || local,
+        ssl: process.env.DATABASE_URL ? true : false,
+    });
+
+    database.connect();
+
+    database.query(`INSERT into users (username, password) values ('${username}','${password}');`, (err, res) => {
+        let validUser = true;
+        if (err) validUser = false;    
+        database.end();
+        return callback(validUser);
+    });
+}
+
+getUsers(function(result) {
+    console.log(result);
+});
+
+createUser('metword', '12345', function(result) {
+    console.log(result);
 });
