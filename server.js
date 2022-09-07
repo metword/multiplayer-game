@@ -6,7 +6,7 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
-const { Pool } = require('pg');
+const { Pool } = require("pg");
 const local = "postgresql://postgres:password@localhost:5432/postgres";
 
 // Set static folder.
@@ -58,26 +58,32 @@ io.on("connection", (socket) => {
         thisEntity.position = clientEntity;
     });
 
+    // On client login
+    socket.on("login", (credentials) => {
+        console.log("LOGIN");
+    });
 });
 
-const pool = (() => {
-    if (process.env.NODE_ENV !== 'production') {
-        return new Pool({
-            connectionString: local,
-            ssl: false
-        });
-    } else {
-        return new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: {
-                rejectUnauthorized: false
-              }
-        });
-    } 
-})();
+
 
 function getUsers(callback) {
-    const database = pool;
+    const getDatabase = (() => {
+        if (process.env.NODE_ENV !== 'production') {
+            return new Pool({
+                connectionString: local,
+                ssl: false
+            });
+        } else {
+            return new Pool({
+                connectionString: process.env.DATABASE_URL,
+                ssl: {
+                    rejectUnauthorized: false
+                }
+            });
+        } 
+    })();
+
+    const database = getDatabase;
     
     database.connect();
     
@@ -89,7 +95,23 @@ function getUsers(callback) {
 }
 
 function createUser(username, password, callback) {
-    const database = pool;
+    const getDatabase = (() => {
+        if (process.env.NODE_ENV !== 'production') {
+            return new Pool({
+                connectionString: local,
+                ssl: false
+            });
+        } else {
+            return new Pool({
+                connectionString: process.env.DATABASE_URL,
+                ssl: {
+                    rejectUnauthorized: false
+                }
+            });
+        } 
+    })();
+
+    const database = getDatabase;
 
     database.connect();
 
@@ -101,10 +123,22 @@ function createUser(username, password, callback) {
     });
 }
 
-getUsers(function(result) {
+/*getUsers(function(result) {
     console.log(result);
 });
 
-//createUser('metword', '12345', function(result) {
-//    console.log(result);
-//});
+createUser('metword', '12345', function(result) {
+    console.log(result);
+});*/
+
+const passport = require("passport");
+
+app.post('/login', passport.authenticate('login', {
+    successRedirect : '/home', 
+    failureRedirect : '/login', 
+    failureFlash : true
+}));
+
+app.get('/home', function(request, response) {
+        response.render('pages/home');
+});
