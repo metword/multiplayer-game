@@ -19,7 +19,7 @@ let nextId = 0;
 // Start server
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    const tps = 1000 / 20;
+    const tps = 1000 / 60;
     function tick() {
         //console.log(positions);
 
