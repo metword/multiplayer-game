@@ -76,7 +76,9 @@ function getUsers(callback) {
         } else {
             return new Pool({
                 connectionString: process.env.DATABASE_URL,
-                ssl: process.env.DATABASE_URL ? true : false,
+                ssl: {
+                    rejectUnauthorized: false
+                }
             });
         } 
     })();
@@ -102,7 +104,9 @@ function createUser(username, password, callback) {
         } else {
             return new Pool({
                 connectionString: process.env.DATABASE_URL,
-                ssl: process.env.DATABASE_URL ? true : false,
+                ssl: {
+                    rejectUnauthorized: false
+                }
             });
         } 
     })();
@@ -126,15 +130,3 @@ function createUser(username, password, callback) {
 createUser('metword', '12345', function(result) {
     console.log(result);
 });*/
-
-const passport = require("passport");
-
-app.post('/login', passport.authenticate('login', {
-    successRedirect : '/home', 
-    failureRedirect : '/login', 
-    failureFlash : true
-}));
-
-app.get('/home', function(request, response) {
-        response.render('pages/home');
-});
