@@ -76,9 +76,7 @@ function getUsers(callback) {
         } else {
             return new Pool({
                 connectionString: process.env.DATABASE_URL,
-                ssl: {
-                    rejectUnauthorized: false
-                }
+                ssl: process.env.DATABASE_URL ? true : false,
             });
         } 
     })();
@@ -104,9 +102,7 @@ function createUser(username, password, callback) {
         } else {
             return new Pool({
                 connectionString: process.env.DATABASE_URL,
-                ssl: {
-                    rejectUnauthorized: false
-                }
+                ssl: process.env.DATABASE_URL ? true : false,
             });
         } 
     })();
