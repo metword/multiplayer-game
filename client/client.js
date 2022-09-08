@@ -3,7 +3,8 @@ const socket = io();
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const tps = 1000 / 60;
-const color = "rgb(0,255,0)";
+const playerColor = "rgb(0,255,0)";
+const enemyColor = "rgb(255,0,0)";
 
 let clientId = undefined;
 let serverEntities = null;
@@ -38,6 +39,7 @@ let hotbarSlot = 0;
 //future? menu
 let currentScreen = "game";
 let chatInput = "";
+let clientMessageQueue = [];
 
 window.onload = window.onresize = function () {
     canvas.height = window.innerHeight;
@@ -76,13 +78,22 @@ function render() {
     if (serverEntities !== null) {
         //console.log("SERVER ENTITIES !== NULL")
         for (const entity of serverEntities) {
-            if (entity.id !== clientId && entity.position !== null) {
-                drawPlayer(entity.position.x, entity.position.y, -entity.mouseAngle, entity.heldItem, "rgb(255,0,0)");
+            if (entity.id !== clientId) {
+                if (entity.position !== null) {
+                    drawPlayer(entity.position.x, entity.position.y, -entity.mouseAngle, entity.heldItem, enemyColor);
+                }
+                if (entity.messageQueue.length !== 0) {
+                    drawChatBubble(entity.position.x, entity.position.y, entity.messageQueue, enemyColor);
+                    //console.log(entity.messageQueue.values());
+                }
+            } else if (entity.messageQueue.length !== 0) {
+                clientMessageQueue = entity.messageQueue;
             }
         }
     }
 
-    drawPlayer(clientPos.x, clientPos.y, -mouseAngle, heldItem(), color);
+    drawChatBubble(clientPos.x, clientPos.y, clientMessageQueue, playerColor);
+    drawPlayer(clientPos.x, clientPos.y, -mouseAngle, heldItem(), playerColor);
 }
 
 function clearCanvas() {
@@ -128,9 +139,9 @@ function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
 function drawGun(length) {
     ctx.beginPath();
 
-    ctx.arc(15, 0, 5, Math.PI / 2, 3 * Math.PI / 2);
+    ctx.arc(15, 0, 5, Math.PI * 0.5, Math.PI * 1.5);
     ctx.lineTo(15 + length, -5);
-    ctx.arc(15 + length, 0, 5, 3 * Math.PI / 2, Math.PI / 2);
+    ctx.arc(15 + length, 0, 5, Math.PI * 1.5, Math.PI * 0.5);
     ctx.lineTo(15, 5);
     ctx.fillStyle = "orange";
     ctx.fill();
@@ -138,6 +149,54 @@ function drawGun(length) {
     ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
+}
+
+//we'll have to make a function similar to breakrenderedchatmessages...
+function drawChatBubble(x, y, messages, color) {
+    ctx.save();
+    ctx.translate(x, y - 40);
+
+    ctx.font = 'bold 16px sans-serif';
+    for (let i = messages.length - 1; i >= 0; i--) {
+        //console.log(new Date().getTime() - messages[i].time < 5000);
+        //after 5 seconds, the chat message will disappear;
+        const dt = new Date().getTime() - messages[i].time
+        if (dt < 5000) {
+            const j = messages.length - 1 - i;
+            const message = messages[i].message
+            const width = (ctx.measureText(message)).width;
+            const left = -width*0.5;
+            const top = j * -30;
+            const radius = 5;
+
+            const alpha = Math.floor(dt < 4000 ? 10 : (5000-dt)*0.01)*0.1;
+
+            ctx.fillStyle = `rgba(0,0,0,${alpha*0.2})`;
+
+            ctx.beginPath();
+
+            ctx.arc(left, top, radius, Math.PI*0.5,Math.PI);
+            ctx.lineTo(left-radius, top-16);
+            ctx.arc(left,top-16, radius, Math.PI, Math.PI*1.5);
+            ctx.lineTo(left+width, top-16-radius);
+            ctx.arc(left+width,top-16, radius, Math.PI * 1.5, 0);
+            ctx.lineTo(left+width+radius,top);
+            ctx.arc(left+width,top, radius, 0, Math.PI*0.5);
+            ctx.lineTo(left,top+radius);
+
+            ctx.fill();
+
+            ctx.fillStyle = `${color.substring(0, color.length-1)},${alpha})`;
+
+            //ctx.beginPath();
+            //console.log(ctx.fillStyle);
+            ctx.fillText(message, left, top);
+        
+            //console.log(messages[i].message);
+        }
+    }
+
+    ctx.restore();
 }
 
 // CLIENT HAX --------------------- 
@@ -188,7 +247,7 @@ window.addEventListener("keydown", (key) => {
         switch (key.key) {
             case "Enter": {
                 //console.log("OUT:" + chatInput);
-                socket.emit("chatmessage", chatInput);
+                socket.emit("chat", chatInput);
                 chatInput = "";
                 currentScreen = "game";
             }
@@ -198,7 +257,7 @@ window.addEventListener("keydown", (key) => {
                 //console.log(chatInput);
             }
                 break;
-            case "Shift" : {
+            case "Shift": {
                 keyPresses.shift = true;
             }
                 break;
@@ -247,7 +306,7 @@ window.addEventListener("keyup", (key) => {
             break;
         case "d": keyPresses.right = false;
             break;
-        case "Shift" : keyPresses.shift = false;
+        case "Shift": keyPresses.shift = false;
             break;
     }
 });
@@ -271,7 +330,7 @@ socket.on("getplayer", () => {
     socket.emit("playerdata", clientPos, mouseAngle, heldItem());
 });
 
-socket.on("renderplayers", (entitites) => {
+socket.on("loadplayers", (entitites) => {
     serverEntities = entitites;
 });
 /*const log = (text) => {

@@ -22,12 +22,14 @@ server.listen(PORT, () => {
     const tps = 1000 / 60;
     function tick() {
         //console.log(positions);
+        removeExpiredMessages();
 
         // Requests all clients to send position to the server
         io.emit("getplayer", );
 
-        // Emits all positions of all clients
-        io.emit("renderplayers", entities);
+        // Emits all entity states to the client
+        io.emit("loadplayers", entities);
+
     }
     setInterval(tick, tps);
 });
@@ -36,18 +38,18 @@ server.listen(PORT, () => {
 io.on("connection", (socket) => {
     // Creating the entity
     const id = nextId;
-    const thisEntity = {id: id, position : null, mouseAngle : null, heldItem : null};
+    const thisEntity = {id: id, position : null, mouseAngle : null, heldItem : null, messageQueue : []};
     entities.push(thisEntity);
     nextId++;
 
     console.log(`Client connected with ID ${id}`);
 
     // In the init function we could eventually pass in a position to start the player at.
-    socket.emit("init", id);
+    socket.emit("init", thisEntity.id);
 
     // On client disconnect
     socket.on("disconnect", () => {
-        console.log(`Client ${id} disconnected!`);
+        console.log(`Client ${thisEntity.id} disconnected!`);
 
         const index = entities.indexOf(thisEntity);
         entities.splice(index,1);
@@ -60,8 +62,10 @@ io.on("connection", (socket) => {
         thisEntity.heldItem = heldItem;
     });
 
-    socket.on("chatmessage", (chatMessage) => {
-        console.log(chatMessage);
+    socket.on("chat", (chatMessage) => {
+        console.log(`${thisEntity.id} > ${chatMessage}`);
+        const messagePackage = {message: chatMessage, time: new Date().getTime()};
+        thisEntity.messageQueue.push(messagePackage);
     });
 
     // On client login
@@ -69,6 +73,12 @@ io.on("connection", (socket) => {
     //    console.log("LOGIN");
     //});
 });
+
+//FROM const entities, will remove messages with a timestamp over some number
+// on client side, we can prevent the rendering of messages sooner be
+function removeExpiredMessages() {
+
+}
 
 //FOR WHEN I WANT TO MAKE A LOGIN SYSTEM...
 /*function getUsers(callback) {
