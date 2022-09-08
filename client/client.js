@@ -78,7 +78,7 @@ function drawPlayer(x, y, angle, color) {
 
     ctx.beginPath();
 
-    ctx.arc(0, 0, 20, 0, 2 * Math.PI, false);
+    ctx.arc(0, 0, 20, 0, 2 * Math.PI);
     ctx.fillStyle = color;
     ctx.fill();
 
@@ -86,26 +86,48 @@ function drawPlayer(x, y, angle, color) {
     ctx.strokeStyle = "black";
     ctx.stroke();
 
-    drawGun();
+    //drawGun(30);
+    drawHand(2, color);
 
     ctx.restore();
 }
-function drawHand(count) {
+function drawHand(count, color) {
     if (count === 1) {
-        
+        ctx.beginPath();
+
+        ctx.arc(15,3,10,0,2*Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "black";
+        ctx.stroke();
     } else if (count === 2) {
+        ctx.beginPath();
+
+        ctx.arc(15,15,10,0,2*Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+
+        ctx.arc(15,-15,10,0,2*Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.stroke();
 
     } else {
 
     }
 }
 
-function drawGun() {
+function drawGun(length) {
     ctx.beginPath();
 
     ctx.arc(15, 0, 5, Math.PI/2, 3*Math.PI/2);
-    ctx.lineTo(30, -5);
-    ctx.arc(30, 0, 5, 3*Math.PI/2, Math.PI/2);
+    ctx.lineTo(15+length, -5);
+    ctx.arc(15+length, 0, 5, 3*Math.PI/2, Math.PI/2);
     ctx.lineTo(15, 5);
     ctx.fillStyle = "brown";
     ctx.fill();
