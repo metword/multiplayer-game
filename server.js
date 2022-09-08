@@ -60,15 +60,18 @@ io.on("connection", (socket) => {
         thisEntity.heldItem = heldItem;
     });
 
-    // On client login
-    socket.on("login", (credentials) => {
-        console.log("LOGIN");
+    socket.on("chatmessage", (chatMessage) => {
+        console.log(chatMessage);
     });
+
+    // On client login
+    //socket.on("login", (credentials) => {
+    //    console.log("LOGIN");
+    //});
 });
 
-
-
-function getUsers(callback) {
+//FOR WHEN I WANT TO MAKE A LOGIN SYSTEM...
+/*function getUsers(callback) {
     const getDatabase = (() => {
         if (process.env.NODE_ENV !== 'production') {
             return new Pool({
@@ -125,7 +128,7 @@ function createUser(username, password, callback) {
     });
 }
 
-/*getUsers(function(result) {
+getUsers(function(result) {
     console.log(result);
 });
 
