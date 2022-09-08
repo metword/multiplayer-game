@@ -24,7 +24,7 @@ server.listen(PORT, () => {
         //console.log(positions);
 
         // Requests all clients to send position to the server
-        io.emit("getpos", );
+        io.emit("getplayer", );
 
         // Emits all positions of all clients
         io.emit("allpos", entities);
@@ -36,7 +36,7 @@ server.listen(PORT, () => {
 io.on("connection", (socket) => {
     // Creating the entity
     const id = nextId;
-    const thisEntity = {id: id, position : null};
+    const thisEntity = {id: id, position : null, mouseAngle : null};
     entities.push(thisEntity);
     nextId++;
 
@@ -54,8 +54,9 @@ io.on("connection", (socket) => {
     });
 
     // On client emit position to server
-    socket.on("pos", (clientEntity) => {
+    socket.on("playerdata", (clientEntity, mouseAngle) => {
         thisEntity.position = clientEntity;
+        thisEntity.mouseAngle = mouseAngle;
     });
 
     // On client login
@@ -130,3 +131,5 @@ function createUser(username, password, callback) {
 createUser('metword', '12345', function(result) {
     console.log(result);
 });*/
+
+//app.post("")
