@@ -113,7 +113,7 @@ function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
     ctx.fill();
 
     if (strokeColor !== null) {
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 4;
         ctx.strokeStyle = strokeColor;
         ctx.stroke();
     }
