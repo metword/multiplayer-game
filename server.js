@@ -27,7 +27,7 @@ server.listen(PORT, () => {
         io.emit("getplayer", );
 
         // Emits all positions of all clients
-        io.emit("allpos", entities);
+        io.emit("renderplayers", entities);
     }
     setInterval(tick, tps);
 });
@@ -36,7 +36,7 @@ server.listen(PORT, () => {
 io.on("connection", (socket) => {
     // Creating the entity
     const id = nextId;
-    const thisEntity = {id: id, position : null, mouseAngle : null};
+    const thisEntity = {id: id, position : null, mouseAngle : null, heldItem : null};
     entities.push(thisEntity);
     nextId++;
 
@@ -54,9 +54,10 @@ io.on("connection", (socket) => {
     });
 
     // On client emit position to server
-    socket.on("playerdata", (clientEntity, mouseAngle) => {
+    socket.on("playerdata", (clientEntity, mouseAngle, heldItem) => {
         thisEntity.position = clientEntity;
         thisEntity.mouseAngle = mouseAngle;
+        thisEntity.heldItem = heldItem;
     });
 
     // On client login

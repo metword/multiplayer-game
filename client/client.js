@@ -29,6 +29,10 @@ const velocity = new Vec(0,0);
 const mousePos = new Vec(0,0);
 let mouseAngle = 0;
 
+//to add items to hotbar we just need to do /push("item");
+const hotbar = ["fists", "gun"];
+let hotbarSlot = 0;
+
 window.onload = window.onresize = function () {
     canvas.height = window.innerHeight;
     canvas.width = window.innerWidth;
@@ -40,6 +44,16 @@ window.onload = window.onresize = function () {
 // render server entities received from server [io.emit("entities", obj)]
 //
 // eventually handle camera
+
+//TO IMPLEMENT: 
+// MORE ROBUST DRAWING IMPLEMENTATION
+// SWAP BETWEEN GUN AN FISTS
+// CHAT
+// FIRE GUN ON CLICK
+// CAMERA IMPLEMENTATION
+// 
+// MORE ROBUST ENTITY IMPLEMENTATION
+// COLLISIONS
 
 function clientLoop() {
     updatePosition();
@@ -57,12 +71,12 @@ function render() {
         //console.log("SERVER ENTITIES !== NULL")
         for (const entity of serverEntities) {
             if (entity.id !== clientId  && entity.position !== null) {
-                drawPlayer(entity.position.x, entity.position.y, -entity.mouseAngle ,"rgb(255,0,0)");
+                drawPlayer(entity.position.x, entity.position.y, -entity.mouseAngle, entity.heldItem, "rgb(255,0,0)");
             }
         }
     }
 
-    drawPlayer(clientPos.x,clientPos.y, -mouseAngle, color);
+    drawPlayer(clientPos.x,clientPos.y, -mouseAngle, heldItem(), color);
 }
 
 function clearCanvas() {
@@ -71,54 +85,37 @@ function clearCanvas() {
 //////////////////
 //  RENDERING   //
 //////////////////
-function drawPlayer(x, y, angle, color) {
+
+//TODO MAKE FUNCTIONS FOR DRAWING CIRCLES IN SPECIFIC BECAUSE I DO THAT ALOT....
+function drawPlayer(x, y, angle, heldItem, color) {
     ctx.save();
     ctx.translate(x,y);
     ctx.rotate(angle);
 
-    ctx.beginPath();
-
-    ctx.arc(0, 0, 20, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "black";
-    ctx.stroke();
-
-    //drawGun(30);
-    drawHand(2, color);
+    //draw body
+    drawCircle(0,0,20,color,"black");
+    
+    if (heldItem === "fists") {
+        drawCircle(15,15,10,color, "black");
+        drawCircle(15,-15,10,color,"black");
+    } else if (heldItem === "gun") {
+        drawGun(20);
+        drawCircle(15,3,10, color, "black");
+    }
 
     ctx.restore();
 }
-function drawHand(count, color) {
-    if (count === 1) {
-        ctx.beginPath();
+function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
+    ctx.beginPath();
 
-        ctx.arc(15,3,10,0,2*Math.PI);
-        ctx.fillStyle = color;
-        ctx.fill();
+    ctx.arc(offsetX, offsetY, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = baseColor;
+    ctx.fill();
 
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = "black";
+    if (strokeColor !== null) {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = strokeColor;
         ctx.stroke();
-    } else if (count === 2) {
-        ctx.beginPath();
-
-        ctx.arc(15,15,10,0,2*Math.PI);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.beginPath();
-
-        ctx.arc(15,-15,10,0,2*Math.PI);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.stroke();
-
-    } else {
-
     }
 }
 
@@ -129,10 +126,10 @@ function drawGun(length) {
     ctx.lineTo(15+length, -5);
     ctx.arc(15+length, 0, 5, 3*Math.PI/2, Math.PI/2);
     ctx.lineTo(15, 5);
-    ctx.fillStyle = "brown";
+    ctx.fillStyle = "orange";
     ctx.fill();
 
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2;
     ctx.strokeStyle = "black";
     ctx.stroke();
 }
@@ -167,6 +164,18 @@ function updatePosition() {
     mouseAngle = Math.atan2(clientPos.y-mousePos.y, mousePos.x-clientPos.x);
 }
 
+function nextItem() {
+    hotbarSlot++;
+    if (hotbarSlot == hotbar.length) {
+        hotbarSlot = 0;
+    }
+    return heldItem();
+}
+
+function heldItem() {
+    return hotbar[hotbarSlot];
+}
+
 window.addEventListener("keydown", (key) => {
     switch(key.key) {
         case "w" : keyPresses.up = true;
@@ -178,6 +187,8 @@ window.addEventListener("keydown", (key) => {
         case "d" : keyPresses.right = true;
         break;
         case "t" : console.log("open chat!");
+        break;
+        case "q" : nextItem();
         break;
     }
 });
@@ -211,10 +222,10 @@ socket.on("init", (id) => {
 });
 
 socket.on("getplayer", () => {
-    socket.emit("playerdata", clientPos, mouseAngle);
+    socket.emit("playerdata", clientPos, mouseAngle, heldItem());
 });
 
-socket.on("allpos", (entitites) => {
+socket.on("renderplayers", (entitites) => {
     serverEntities = entitites;
 });
 /*const log = (text) => {
