@@ -158,23 +158,21 @@ function drawChatBubble(x, y, messages, color) {
 
     ctx.font = 'bold 16px sans-serif';
     for (let i = messages.length - 1; i >= 0; i--) {
-        //console.log(new Date().getTime() - messages[i].time < 5000);
         //after 5 seconds, the chat message will disappear;
+        const fadeTime = 3000;
+
         const dt = new Date().getTime() - messages[i].time
-        if (dt < 5000) {
+        if (dt < fadeTime) {
             const j = messages.length - 1 - i;
             const message = messages[i].message
             const width = (ctx.measureText(message)).width;
             const left = -width*0.5;
             const top = j * -30;
             const radius = 5;
-
-            const alpha = Math.floor(dt < 4000 ? 10 : (5000-dt)*0.01)*0.1;
-
-            ctx.fillStyle = `rgba(0,0,0,${alpha*0.2})`;
+            
+            const alpha = Math.floor(dt < fadeTime-1000 ? 10 : (fadeTime-dt)*0.01)*0.1;
 
             ctx.beginPath();
-
             ctx.arc(left, top, radius, Math.PI*0.5,Math.PI);
             ctx.lineTo(left-radius, top-16);
             ctx.arc(left,top-16, radius, Math.PI, Math.PI*1.5);
@@ -183,16 +181,11 @@ function drawChatBubble(x, y, messages, color) {
             ctx.lineTo(left+width+radius,top);
             ctx.arc(left+width,top, radius, 0, Math.PI*0.5);
             ctx.lineTo(left,top+radius);
-
+            ctx.fillStyle = `rgba(0,0,0,${alpha*0.2})`;
             ctx.fill();
 
             ctx.fillStyle = `${color.substring(0, color.length-1)},${alpha})`;
-
-            //ctx.beginPath();
-            //console.log(ctx.fillStyle);
             ctx.fillText(message, left, top);
-        
-            //console.log(messages[i].message);
         }
     }
 
