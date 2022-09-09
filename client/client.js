@@ -3,19 +3,8 @@ const socket = io();
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const tps = 1000 / 60;
-const playerColor = "rgb(0,255,0)";
+const playerColor = "";
 const enemyColor = "rgb(255,0,0)";
-
-let clientId = undefined;
-let serverEntities = null;
-
-const keyPresses = {
-    up: false,
-    left: false,
-    down: false,
-    right: false,
-    shift: false
-}
 
 class Vec {
     x;
@@ -26,10 +15,40 @@ class Vec {
     }
 }
 
-const clientPos = new Vec(0, 0);
+class Entity {
+    id; 
+    position; 
+    mouseAngle;
+    heldItem;
+    messageQueue;
+
+    constructor(id = 0, position = new Vec(0,0), mouseAngle=0, heldItem="fists", messageQueue=[]) {
+        // Defaults
+        this.id = id;
+        this.position = position
+        this.mouseAngle = mouseAngle;
+        this.heldItem = heldItem;
+        this.messageQueue = messageQueue;
+    }
+};
+
+const keyPresses = {
+    up: false,
+    left: false,
+    down: false,
+    right: false,
+    shift: false
+}
+
+//THIS ENTITY
+const client = new Entity();
+
+let ticks = 0;
+let serverEntities = [];
+
 const velocity = new Vec(0, 0);
+const camera = new Vec(0, 0);
 const mousePos = new Vec(0, 0);
-let mouseAngle = 0;
 
 //to add items to hotbar we just need to do /push("item");
 const hotbar = ["fists", "gun"];
@@ -39,7 +58,6 @@ let hotbarSlot = 0;
 //future? menu
 let currentScreen = "game";
 let chatInput = "";
-let clientMessageQueue = [];
 
 window.onload = window.onresize = function () {
     canvas.height = window.innerHeight;
@@ -56,44 +74,41 @@ window.onload = window.onresize = function () {
 //TO IMPLEMENT: 
 // MORE ROBUST DRAWING IMPLEMENTATION - DONE
 // SWAP BETWEEN GUN AN FISTS - DONE
-// CHAT 
+// CHAT - DONE
+// CAMERA IMPLEMENTATION - When we're moving
+
 // FIRE GUN ON CLICK
-// CAMERA IMPLEMENTATION
 // 
 // MORE ROBUST ENTITY IMPLEMENTATION
 // COLLISIONS
 
+//IMPLEMENT VARIABLE TIME STEP
 function clientLoop() {
+    //ticks++;
+
     updatePosition();
+    updateCamera();
     render();
+
 }
 
 setInterval(clientLoop, tps);
 
 function render() {
-
     clearCanvas();
 
+    ctx.save();
+    ctx.translate(canvas.width*0.5-camera.x,canvas.height*0.5-camera.y);
+
     //renders provided by the server
-    if (serverEntities !== null) {
-        //console.log("SERVER ENTITIES !== NULL")
-        for (const entity of serverEntities) {
-            if (entity.id !== clientId) {
-                if (entity.position !== null) {
-                    drawPlayer(entity.position.x, entity.position.y, -entity.mouseAngle, entity.heldItem, enemyColor);
-                }
-                if (entity.messageQueue.length !== 0) {
-                    drawChatBubble(entity.position.x, entity.position.y, entity.messageQueue, enemyColor);
-                    //console.log(entity.messageQueue.values());
-                }
-            } else if (entity.messageQueue.length !== 0) {
-                clientMessageQueue = entity.messageQueue;
-            }
+    for (const entity of serverEntities) {
+        if (entity.id !== client.id) {
+            drawPlayer(entity);
         }
     }
+    drawPlayer(client);
 
-    drawChatBubble(clientPos.x, clientPos.y, clientMessageQueue, playerColor);
-    drawPlayer(clientPos.x, clientPos.y, -mouseAngle, heldItem(), playerColor);
+    ctx.restore();
 }
 
 function clearCanvas() {
@@ -103,25 +118,39 @@ function clearCanvas() {
 //  RENDERING   //
 //////////////////
 
-//TODO MAKE FUNCTIONS FOR DRAWING CIRCLES IN SPECIFIC BECAUSE I DO THAT ALOT....
-function drawPlayer(x, y, angle, heldItem, color) {
+
+//TODO, make drawPlayer take an entity and draw it as well as it can based on what it has as properties.
+function drawPlayer(entity) {
+    let color;
+    if (entity.id === client.id) {
+        color = "rgb(0,255,0)";
+    } else {
+        color = "rgb(255,0,0)";
+    }
+
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
+    ctx.translate(entity.position.x, entity.position.y);
+
+    drawChatBubble(entity.messageQueue, color);
+
+    ctx.rotate(-entity.mouseAngle);
 
     //draw body
     drawCircle(0, 0, 20, color, "black");
 
-    if (heldItem === "fists") {
+    if (entity.heldItem === "fists") {
         drawCircle(15, 15, 10, color, "black");
         drawCircle(15, -15, 10, color, "black");
-    } else if (heldItem === "gun") {
+    } else if (entity.heldItem === "gun") {
         drawGun(20);
         drawCircle(15, 3, 10, color, "black");
     }
 
     ctx.restore();
+
+
 }
+
 function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
     ctx.beginPath();
 
@@ -152,44 +181,40 @@ function drawGun(length) {
 }
 
 //we'll have to make a function similar to breakrenderedchatmessages...
-function drawChatBubble(x, y, messages, color) {
-    ctx.save();
-    ctx.translate(x, y - 40);
-
+function drawChatBubble(messages, color) {
     ctx.font = 'bold 16px sans-serif';
     for (let i = messages.length - 1; i >= 0; i--) {
-        //after 5 seconds, the chat message will disappear;
+
         const fadeTime = 3000;
 
-        const dt = new Date().getTime() - messages[i].time
-        if (dt < fadeTime) {
+        const timeLeft = fadeTime + messages[i].time - new Date().getTime();
+        if (timeLeft > 0) {
             const j = messages.length - 1 - i;
             const message = messages[i].message
             const width = (ctx.measureText(message)).width;
-            const left = -width*0.5;
-            const top = j * -30;
+            const left = -width * 0.5;
+            const top = j * -30 - 40;
             const radius = 5;
-            
-            const alpha = Math.floor(dt < fadeTime-1000 ? 10 : (fadeTime-dt)*0.01)*0.1;
+
+            //if more than a second left, our alpha factor is 1, else 
+            const alpha = timeLeft > 1000 ? 1 : timeLeft * 0.001;
 
             ctx.beginPath();
-            ctx.arc(left, top, radius, Math.PI*0.5,Math.PI);
-            ctx.lineTo(left-radius, top-16);
-            ctx.arc(left,top-16, radius, Math.PI, Math.PI*1.5);
-            ctx.lineTo(left+width, top-16-radius);
-            ctx.arc(left+width,top-16, radius, Math.PI * 1.5, 0);
-            ctx.lineTo(left+width+radius,top);
-            ctx.arc(left+width,top, radius, 0, Math.PI*0.5);
-            ctx.lineTo(left,top+radius);
-            ctx.fillStyle = `rgba(0,0,0,${alpha*0.2})`;
+            ctx.arc(left, top, radius, Math.PI * 0.5, Math.PI);
+            ctx.lineTo(left - radius, top - 16);
+            ctx.arc(left, top - 16, radius, Math.PI, Math.PI * 1.5);
+            ctx.lineTo(left + width, top - 16 - radius);
+            ctx.arc(left + width, top - 16, radius, Math.PI * 1.5, 0);
+            ctx.lineTo(left + width + radius, top);
+            ctx.arc(left + width, top, radius, 0, Math.PI * 0.5);
+            ctx.lineTo(left, top + radius);
+            ctx.fillStyle = `rgba(0,0,0,${alpha * 0.2})`;
             ctx.fill();
 
-            ctx.fillStyle = `${color.substring(0, color.length-1)},${alpha})`;
+            ctx.fillStyle = `${color.substring(0, color.length - 1)},${alpha})`;
             ctx.fillText(message, left, top);
         }
     }
-
-    ctx.restore();
 }
 
 // CLIENT HAX --------------------- 
@@ -209,8 +234,8 @@ function updatePosition() {
     }
 
     //update pos
-    clientPos.x += velocity.x;
-    clientPos.y += velocity.y;
+    client.position.x += velocity.x;
+    client.position.y += velocity.y;
 
     //drag
     velocity.x *= 0.8;
@@ -220,7 +245,23 @@ function updatePosition() {
     if (Math.abs(velocity.y) < 1) velocity.y = 0;
 
     //update mouse angle
-    mouseAngle = Math.atan2(clientPos.y - mousePos.y, mousePos.x - clientPos.x);
+    client.mouseAngle = Math.atan2(client.position.y - mousePos.y, mousePos.x - client.position.x);
+}
+
+function updateCamera() {
+    //1   => camera tracks player 1-1
+    //0.5 => camera accelerates at half speed
+    //0   => camera is has 0 acceleration
+    const smoothness = 0.5;
+    const dx = client.position.x - camera.x;
+    const dy = client.position.y - camera.y;
+
+    camera.x += dx * smoothness;
+    camera.y += dy * smoothness;
+
+    console.log(`CAMERA (${camera.x}, ${camera.y})`);
+    console.log(`PLAYER (${client.position.x}, ${client.position.y})`);
+
 }
 
 function nextItem() {
@@ -228,10 +269,6 @@ function nextItem() {
     if (hotbarSlot == hotbar.length) {
         hotbarSlot = 0;
     }
-    return heldItem();
-}
-
-function heldItem() {
     return hotbar[hotbarSlot];
 }
 
@@ -239,8 +276,10 @@ window.addEventListener("keydown", (key) => {
     if (currentScreen === "chat") {
         switch (key.key) {
             case "Enter": {
-                //console.log("OUT:" + chatInput);
-                socket.emit("chat", chatInput);
+                //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
+                //socket.emit("chat", messagePackage);
+                const messagePackage = {message: chatInput, time: new Date().getTime()};
+                client.messageQueue.push(messagePackage);
                 chatInput = "";
                 currentScreen = "game";
             }
@@ -283,7 +322,7 @@ window.addEventListener("keydown", (key) => {
                 break;
             case "t": currentScreen = "chat";
                 break;
-            case "q": nextItem();
+            case "q": client.heldItem = nextItem();
                 break;
         }
     }
@@ -315,12 +354,13 @@ document.querySelector("#canvas").addEventListener("click", (click) => {
 });
 
 socket.on("init", (id) => {
-    clientId = id;
-    console.log(`Joined with id: ${clientId}`);
+    client.id = id;
+    console.log(`Joined with id: ${client.id}`);
 });
 
 socket.on("getplayer", () => {
-    socket.emit("playerdata", clientPos, mouseAngle, heldItem());
+    //TODO: EMIT THE WHOLE ENTITY HERE
+    socket.emit("clientdata", client);
 });
 
 socket.on("loadplayers", (entitites) => {

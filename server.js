@@ -6,8 +6,36 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
-const { Pool } = require("pg");
-const local = "postgresql://postgres:password@localhost:5432/postgres";
+
+class Vec {
+    x;
+    y;
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+};
+
+class Entity {
+    id; 
+    position; 
+    mouseAngle;
+    heldItem;
+    messageQueue;
+
+    constructor(id = 0, position = new Vec(0,0), mouseAngle=0, heldItem="fists", messageQueue=[]) {
+        // Defaults
+        this.id = id;
+        this.position = position
+        this.mouseAngle = mouseAngle;
+        this.heldItem = heldItem;
+        this.messageQueue = messageQueue;
+    }
+};
+
+//const { Pool } = require("pg");
+//const local = "postgresql://postgres:password@localhost:5432/postgres";
+//const Client = require("./client/client");
 
 // Set static folder.
 app.use(express.static(path.join(__dirname,"/client")));
@@ -38,7 +66,7 @@ server.listen(PORT, () => {
 io.on("connection", (socket) => {
     // Creating the entity
     const id = nextId;
-    const thisEntity = {id: id, position : null, mouseAngle : null, heldItem : null, messageQueue : []};
+    const thisEntity = new Entity(id);
     entities.push(thisEntity);
     nextId++;
 
@@ -56,17 +84,18 @@ io.on("connection", (socket) => {
     });
 
     // On client emit position to server
-    socket.on("playerdata", (clientEntity, mouseAngle, heldItem) => {
-        thisEntity.position = clientEntity;
-        thisEntity.mouseAngle = mouseAngle;
-        thisEntity.heldItem = heldItem;
+    socket.on("clientdata", entity => {
+        thisEntity.position = entity.position;
+        thisEntity.heldItem = entity.heldItem;
+        thisEntity.mouseAngle = entity.mouseAngle;
+        thisEntity.messageQueue = entity.messageQueue;
     });
 
-    socket.on("chat", (chatMessage) => {
-        console.log(`${thisEntity.id} > ${chatMessage}`);
-        const messagePackage = {message: chatMessage, time: new Date().getTime()};
-        thisEntity.messageQueue.push(messagePackage);
-    });
+    //socket.on("chat", (chatMessage) => {
+    //    console.log(`${thisEntity.id} > ${chatMessage}`);
+    //    const messagePackage = {message: chatMessage, time: new Date().getTime()};
+    //    thisEntity.messageQueue.push(messagePackage);
+    //});
 
     // On client login
     //socket.on("login", (credentials) => {
