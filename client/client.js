@@ -272,7 +272,7 @@ function updateCamera() {
 }
 
 function updateMouseAngle() {
-    client.mouseAngle = Math.atan2(-camera.y - mousePos.y + client.position.y , camera.x + mousePos.x - client.position.x);
+    client.mouseAngle = Math.atan2(- mousePos.y + client.position.y , mousePos.x - client.position.x);
 }
 
 function nextItem() {
@@ -355,8 +355,8 @@ window.addEventListener("keyup", (key) => {
 });
 
 window.addEventListener("mousemove", (mouse) => {
-    mousePos.x = mouse.clientX;
-    mousePos.y = mouse.clientY;
+    mousePos.x = mouse.clientX + camera.x;
+    mousePos.y = mouse.clientY + camera.y;
 
 });
 
