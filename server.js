@@ -85,10 +85,11 @@ io.on("connection", (socket) => {
 
     // On client emit position to server
     socket.on("clientdata", entity => {
-        thisEntity.position = entity.position;
-        thisEntity.heldItem = entity.heldItem;
-        thisEntity.mouseAngle = entity.mouseAngle;
-        thisEntity.messageQueue = entity.messageQueue;
+        Object.assign(thisEntity,entity);
+        //thisEntity.position = entity.position;
+        //thisEntity.heldItem = entity.heldItem;
+        //thisEntity.mouseAngle = entity.mouseAngle;
+        //thisEntity.messageQueue = entity.messageQueue;
     });
 
     //socket.on("chat", (chatMessage) => {

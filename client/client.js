@@ -40,6 +40,11 @@ const keyPresses = {
     shift: false
 }
 
+window.onload = window.onresize = function () {
+    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth;
+}
+
 //THIS ENTITY
 const client = new Entity();
 
@@ -47,7 +52,8 @@ let ticks = 0;
 let serverEntities = [];
 
 const velocity = new Vec(0, 0);
-const camera = new Vec(0, 0);
+const cameraCenter = new Vec(0, 0);
+const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
 const mousePos = new Vec(0, 0);
 
 //to add items to hotbar we just need to do /push("item");
@@ -59,10 +65,6 @@ let hotbarSlot = 0;
 let currentScreen = "game";
 let chatInput = "";
 
-window.onload = window.onresize = function () {
-    canvas.height = window.innerHeight;
-    canvas.width = window.innerWidth;
-}
 
 // CLIENT DUTY!!!
 // send position when server requests it [socket.emit("position", obj)]
@@ -88,6 +90,7 @@ function clientLoop() {
 
     updatePosition();
     updateCamera();
+    updateMouseAngle();
     render();
 
 }
@@ -98,7 +101,9 @@ function render() {
     clearCanvas();
 
     ctx.save();
-    ctx.translate(canvas.width*0.5-camera.x,canvas.height*0.5-camera.y);
+    ctx.translate(-camera.x, -camera.y);
+
+    drawCircle(0,0,5,"black");
 
     //renders provided by the server
     for (const entity of serverEntities) {
@@ -158,7 +163,7 @@ function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
     ctx.fillStyle = baseColor;
     ctx.fill();
 
-    if (strokeColor !== null) {
+    if (strokeColor !== undefined) {
         ctx.lineWidth = 4;
         ctx.strokeStyle = strokeColor;
         ctx.stroke();
@@ -245,23 +250,29 @@ function updatePosition() {
     if (Math.abs(velocity.y) < 1) velocity.y = 0;
 
     //update mouse angle
-    client.mouseAngle = Math.atan2(client.position.y - mousePos.y, mousePos.x - client.position.x);
 }
 
 function updateCamera() {
     //1   => camera tracks player 1-1
     //0.5 => camera accelerates at half speed
     //0   => camera is has 0 acceleration
-    const smoothness = 0.5;
-    const dx = client.position.x - camera.x;
-    const dy = client.position.y - camera.y;
+    const smoothness = 0.1;
 
-    camera.x += dx * smoothness;
-    camera.y += dy * smoothness;
+    const dx = client.position.x - cameraCenter.x;
+    const dy = client.position.y - cameraCenter.y;
+    //camera.x += (client.position.x - camera.x) * smoothness;
+    cameraCenter.x += dx * smoothness;
+    cameraCenter.y += dy * smoothness;
 
-    console.log(`CAMERA (${camera.x}, ${camera.y})`);
-    console.log(`PLAYER (${client.position.x}, ${client.position.y})`);
+    //console.log(`CAMERA (${camera.x}, ${camera.y})`);
+    //console.log(`PLAYER (${client.position.x}, ${client.position.y})`);
+    camera.x = cameraCenter.x - (canvas.width * 0.5);
+    camera.y = cameraCenter.y - (canvas.height * 0.5);
 
+}
+
+function updateMouseAngle() {
+    client.mouseAngle = Math.atan2(-camera.y - mousePos.y + client.position.y , camera.x + mousePos.x - client.position.x);
 }
 
 function nextItem() {
