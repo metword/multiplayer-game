@@ -7,32 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
-class Vec {
-    x;
-    y;
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-};
-
-class Entity {
-    id; 
-    position; 
-    mouseAngle;
-    heldItem;
-    messageQueue;
-
-    constructor(id = 0, position = new Vec(0,0), mouseAngle=0, heldItem="fists", messageQueue=[]) {
-        // Defaults
-        this.id = id;
-        this.position = position
-        this.mouseAngle = mouseAngle;
-        this.heldItem = heldItem;
-        this.messageQueue = messageQueue;
-    }
-};
-
 //const { Pool } = require("pg");
 //const local = "postgresql://postgres:password@localhost:5432/postgres";
 //const Client = require("./client/client");
@@ -53,10 +27,10 @@ server.listen(PORT, () => {
         removeExpiredMessages();
 
         // Requests all clients to send position to the server
-        io.emit("getplayer", );
+        io.emit("getclientdata", );
 
         // Emits all entity states to the client
-        io.emit("loadplayers", entities);
+        io.emit("sendserverdata", entities);
 
     }
     setInterval(tick, tps);
@@ -65,15 +39,20 @@ server.listen(PORT, () => {
 // Handle a socket connection request from web client
 io.on("connection", (socket) => {
     // Creating the entity
+    const thisEntity = {};
+
+    // Setting the id for the entity
     const id = nextId;
-    const thisEntity = new Entity(id);
-    entities.push(thisEntity);
     nextId++;
 
-    console.log(`Client connected with ID ${id}`);
+    // First ping to the client (can adde extra attributes later if needed!)
+    socket.emit("init", id);
 
-    // In the init function we could eventually pass in a position to start the player at.
-    socket.emit("init", thisEntity.id);
+    socket.on("init", client => {
+        Object.assign(thisEntity, client);
+        console.log(`Client connected with ID ${id}`);
+        entities.push(thisEntity);
+    });
 
     // On client disconnect
     socket.on("disconnect", () => {
@@ -84,24 +63,9 @@ io.on("connection", (socket) => {
     });
 
     // On client emit position to server
-    socket.on("clientdata", entity => {
-        Object.assign(thisEntity,entity);
-        //thisEntity.position = entity.position;
-        //thisEntity.heldItem = entity.heldItem;
-        //thisEntity.mouseAngle = entity.mouseAngle;
-        //thisEntity.messageQueue = entity.messageQueue;
+    socket.on("getclientdata", client => {
+        Object.assign(thisEntity, client);
     });
-
-    //socket.on("chat", (chatMessage) => {
-    //    console.log(`${thisEntity.id} > ${chatMessage}`);
-    //    const messagePackage = {message: chatMessage, time: new Date().getTime()};
-    //    thisEntity.messageQueue.push(messagePackage);
-    //});
-
-    // On client login
-    //socket.on("login", (credentials) => {
-    //    console.log("LOGIN");
-    //});
 });
 
 //FROM const entities, will remove messages with a timestamp over some number

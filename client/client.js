@@ -5,32 +5,44 @@ const ctx = canvas.getContext("2d");
 const tps = 1000 / 60;
 const playerColor = "";
 const enemyColor = "rgb(255,0,0)";
+const devMode = true;
 
 class Vec {
     x;
     y;
-    constructor(x, y) {
+    constructor(x = 0, y = 0) {
         this.x = x;
         this.y = y;
     }
 }
 
 class Entity {
-    id; 
-    position; 
-    mouseAngle;
-    heldItem;
-    messageQueue;
+    id;
+    name;
+    position;
+    angle;
+    //ALL OTHER ENTITY SPECIFIC DATA IS HELD IN DATA
+    data;
 
-    constructor(id = 0, position = new Vec(0,0), mouseAngle=0, heldItem="fists", messageQueue=[]) {
+    //EXTRA DATA WRAP IN AN OBJECT CALLED DATA
+    /*color;
+    heldItem;
+    messageQueue;*/
+
+    constructor(id = -1, name = error("param", "name"), position = new Vec(0,0), angle=0, data = error("param", "data")) { //color="black", heldItem="fists", messageQueue=[]) {
         // Defaults
         this.id = id;
-        this.position = position
-        this.mouseAngle = mouseAngle;
+        this.name = name;
+        this.position = position;
+        this.angle = angle;
+        this.data = data;
+        /*
+        this.color = color;
         this.heldItem = heldItem;
         this.messageQueue = messageQueue;
+        */
     }
-};
+}
 
 const keyPresses = {
     up: false,
@@ -46,7 +58,7 @@ window.onload = window.onresize = function () {
 }
 
 //THIS ENTITY
-const client = new Entity();
+const client = new Entity(undefined, "playerEntity", undefined, undefined, {heldItem:"fists", messageQueue:[]});
 
 let ticks = 0;
 let serverEntities = [];
@@ -86,11 +98,14 @@ let chatInput = "";
 
 //IMPLEMENT VARIABLE TIME STEP
 function clientLoop() {
+    //console.log(camera.x+" " + camera.y);
     //ticks++;
 
     updatePosition();
+    resolveCollisions();
     updateCamera();
     updateMouseAngle();
+
     render();
 
 }
@@ -100,15 +115,20 @@ setInterval(clientLoop, tps);
 function render() {
     clearCanvas();
 
+    //WILL BE DRAWN RELATIVE TO 0,0 USING THE CONTEXT OF THE CAMERA
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
-
+    
     drawCircle(0,0,5,"black");
 
     //renders provided by the server
     for (const entity of serverEntities) {
         if (entity.id !== client.id) {
-            drawPlayer(entity);
+            if (entity.name = "playerEntity") {
+                drawPlayer(entity);
+            } else if (entity.name = "bullet") {
+                drawBullet(entity);
+            }   
         }
     }
     drawPlayer(client);
@@ -133,33 +153,35 @@ function drawPlayer(entity) {
         color = "rgb(255,0,0)";
     }
 
+    //DRAWN RELATIVE TO THE PLAYERS POSITION
     ctx.save();
     ctx.translate(entity.position.x, entity.position.y);
 
-    drawChatBubble(entity.messageQueue, color);
+    drawChatBubble(entity.data.messageQueue, color);
 
-    ctx.rotate(-entity.mouseAngle);
+    ctx.rotate(-entity.angle);
 
+    if (entity.id === client.id && devMode) {
+        drawRectangle(-1000,-1,2000,2, "red");
+    }
     //draw body
     drawCircle(0, 0, 20, color, "black");
 
-    if (entity.heldItem === "fists") {
+    if (entity.data.heldItem === "fists") {
         drawCircle(15, 15, 10, color, "black");
         drawCircle(15, -15, 10, color, "black");
-    } else if (entity.heldItem === "gun") {
+    } else if (entity.data.heldItem === "gun") {
         drawGun(20);
         drawCircle(15, 3, 10, color, "black");
     }
 
     ctx.restore();
-
-
 }
 
-function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
+function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
     ctx.beginPath();
 
-    ctx.arc(offsetX, offsetY, radius, 0, 2 * Math.PI);
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
     ctx.fillStyle = baseColor;
     ctx.fill();
 
@@ -170,19 +192,31 @@ function drawCircle(offsetX, offsetY, radius, baseColor, strokeColor) {
     }
 }
 
+function drawRectangle(x, y, width, height, color = "black") {
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.rect(x,y,width,height);
+    ctx.fill();
+}
+
 function drawGun(length) {
+    //drawRectangle(15,-4,15+length,8,"black");
     ctx.beginPath();
 
     ctx.arc(15, 0, 5, Math.PI * 0.5, Math.PI * 1.5);
     ctx.lineTo(15 + length, -5);
     ctx.arc(15 + length, 0, 5, Math.PI * 1.5, Math.PI * 0.5);
     ctx.lineTo(15, 5);
-    ctx.fillStyle = "orange";
+    ctx.fillStyle = "black";
     ctx.fill();
 
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "black";
-    ctx.stroke();
+    //ctx.lineWidth = 2;
+    //ctx.strokeStyle = "black";
+    //ctx.stroke();
+}
+
+function drawBullet(entity) {
+
 }
 
 //we'll have to make a function similar to breakrenderedchatmessages...
@@ -249,7 +283,11 @@ function updatePosition() {
     if (Math.abs(velocity.x) < 1) velocity.x = 0;
     if (Math.abs(velocity.y) < 1) velocity.y = 0;
 
-    //update mouse angle
+    //console.log(client.position.x, + " " +   client.position.y);
+}
+
+function resolveCollisions() {
+    
 }
 
 function updateCamera() {
@@ -272,8 +310,12 @@ function updateCamera() {
 }
 
 function updateMouseAngle() {
-    client.mouseAngle = Math.atan2(- mousePos.y + client.position.y , mousePos.x - client.position.x);
+    client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y , mousePos.x - client.position.x + camera.x);
+    //console.log(client.angle * 180 / Math.PI);
 }
+
+
+
 
 function nextItem() {
     hotbarSlot++;
@@ -290,7 +332,7 @@ window.addEventListener("keydown", (key) => {
                 //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
                 //socket.emit("chat", messagePackage);
                 const messagePackage = {message: chatInput, time: new Date().getTime()};
-                client.messageQueue.push(messagePackage);
+                client.data.messageQueue.push(messagePackage);
                 chatInput = "";
                 currentScreen = "game";
             }
@@ -333,7 +375,7 @@ window.addEventListener("keydown", (key) => {
                 break;
             case "t": currentScreen = "chat";
                 break;
-            case "q": client.heldItem = nextItem();
+            case "q": client.data.heldItem = nextItem();
                 break;
         }
     }
@@ -355,8 +397,8 @@ window.addEventListener("keyup", (key) => {
 });
 
 window.addEventListener("mousemove", (mouse) => {
-    mousePos.x = mouse.clientX + camera.x;
-    mousePos.y = mouse.clientY + camera.y;
+    mousePos.x = mouse.clientX; 
+    mousePos.y = mouse.clientY;
 
 });
 
@@ -367,16 +409,25 @@ document.querySelector("#canvas").addEventListener("click", (click) => {
 socket.on("init", (id) => {
     client.id = id;
     console.log(`Joined with id: ${client.id}`);
+    socket.emit("init", client);
 });
 
-socket.on("getplayer", () => {
+socket.on("getclientdata", () => {
     //TODO: EMIT THE WHOLE ENTITY HERE
-    socket.emit("clientdata", client);
+    socket.emit("getclientdata", client);
 });
 
-socket.on("loadplayers", (entitites) => {
+socket.on("sendserverdata", (entitites) => {
     serverEntities = entitites;
 });
+
+function error(type, data) {
+    if (type === "param") {
+        throw new Error(`Parameter '${data}' is a required parameter for this function!`);
+    } else {
+        throw new Error();
+    }
+}
 /*const log = (text) => {
     const list = document.querySelector("#message-history");
     const elem = document.createElement("div");
