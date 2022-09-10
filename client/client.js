@@ -16,7 +16,7 @@ class Vec {
     }
 }
 
-class Entity {
+class GameObject {
     id;
     name;
     position;
@@ -24,23 +24,13 @@ class Entity {
     //ALL OTHER ENTITY SPECIFIC DATA IS HELD IN DATA
     data;
 
-    //EXTRA DATA WRAP IN AN OBJECT CALLED DATA
-    /*color;
-    heldItem;
-    messageQueue;*/
-
-    constructor(id = -1, name = error("param", "name"), position = new Vec(0,0), angle=0, data = error("param", "data")) { //color="black", heldItem="fists", messageQueue=[]) {
+    constructor(id = -1, name = error("param", "name"), position = new Vec(0,0), angle=0, data = error("param", "data")) {
         // Defaults
         this.id = id;
         this.name = name;
         this.position = position;
         this.angle = angle;
         this.data = data;
-        /*
-        this.color = color;
-        this.heldItem = heldItem;
-        this.messageQueue = messageQueue;
-        */
     }
 }
 
@@ -58,10 +48,12 @@ window.onload = window.onresize = function () {
 }
 
 //THIS ENTITY
-const client = new Entity(undefined, "playerEntity", undefined, undefined, {heldItem:"fists", messageQueue:[]});
+// playerEntity hitbox will be constant 20 units
+const client = new GameObject(undefined, "playerEntity", undefined, undefined, {heldItem:"fists", messageQueue:[]});
 
 let ticks = 0;
 let serverEntities = [];
+const tiles = [];
 
 const velocity = new Vec(0, 0);
 const cameraCenter = new Vec(0, 0);
@@ -77,6 +69,33 @@ let hotbarSlot = 0;
 let currentScreen = "game";
 let chatInput = "";
 
+createMap();
+
+function createMap() {
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(100,-100), 0, {shape:"circle", radius:100}));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, 100), 0, {shape:"circle", radius:100}));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100,-100), 0, {shape:"circle", radius:100}));
+}
+
+function doCollisions() {
+    for (const tile of tiles) {
+        resolveCollision(tile);
+    }
+}
+
+function resolveCollision(tile) {
+    if (tile.data.shape === "circle") {
+        const dx = client.position.x - tile.position.x;
+        const dy = client.position.y - tile.position.y;
+        const sumRadius = 20 + tile.data.radius;
+        if (dx * dx + dy * dy < sumRadius * sumRadius) {
+            const hypo = Math.sqrt(dx * dx + dy * dy);
+            client.position.x = tile.position.x + dx / hypo * (sumRadius + 1);
+            client.position.y = tile.position.y + dy / hypo * (sumRadius + 1);
+        }
+    }
+}
 
 // CLIENT DUTY!!!
 // send position when server requests it [socket.emit("position", obj)]
@@ -102,7 +121,7 @@ function clientLoop() {
     //ticks++;
 
     updatePosition();
-    resolveCollisions();
+    doCollisions();
     updateCamera();
     updateMouseAngle();
 
@@ -130,6 +149,9 @@ function render() {
                 drawBullet(entity);
             }   
         }
+    }
+    for (const tile of tiles) {
+        drawTile(tile);
     }
     drawPlayer(client);
 
@@ -176,6 +198,12 @@ function drawPlayer(entity) {
     }
 
     ctx.restore();
+}
+
+function drawTile(tile) {
+    if (tile.data.shape === "circle") {
+        drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
+    }
 }
 
 function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
@@ -286,9 +314,6 @@ function updatePosition() {
     //console.log(client.position.x, + " " +   client.position.y);
 }
 
-function resolveCollisions() {
-    
-}
 
 function updateCamera() {
     //1   => camera tracks player 1-1
@@ -313,9 +338,6 @@ function updateMouseAngle() {
     client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y , mousePos.x - client.position.x + camera.x);
     //console.log(client.angle * 180 / Math.PI);
 }
-
-
-
 
 function nextItem() {
     hotbarSlot++;
