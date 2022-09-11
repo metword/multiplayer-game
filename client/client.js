@@ -8,7 +8,7 @@ const velocityFactor = 2;
 const playerRadius = 20;
 const playerColor = "";
 const enemyColor = "rgb(255,0,0)";
-const devMode = { ray: true, movementent: true , AABB: true};
+const devMode = { ray: false, movementent: false , AABB: false};
 
 class Vec {
     x;
@@ -264,7 +264,7 @@ function drawPlayer(entity) {
         drawRectangle(-1000, -1, 2000, 2, "red");
     }
     //draw body
-    drawCircle(0, 0, 20, color, /*"black"*/);
+    drawCircle(0, 0, 20, color, "black");
 
     if (entity.data.heldItem === "fists") {
         drawCircle(15, 15, 10, color, "black");
