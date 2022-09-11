@@ -3,9 +3,12 @@ const socket = io();
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 const tps = 1000 / 60;
+const velocityFactor = 2;
+// maybe player size can edit the actual sprite?
+const playerRadius = 20;
 const playerColor = "";
 const enemyColor = "rgb(255,0,0)";
-const devMode = true;
+const devMode = { ray: true, movementent: true , AABB: true};
 
 class Vec {
     x;
@@ -13,6 +16,22 @@ class Vec {
     constructor(x = 0, y = 0) {
         this.x = x;
         this.y = y;
+    }
+
+    add(vec2) {
+        return new Vec(this.x + vec2.x, this.y + vec2.y);
+    }
+
+    scale(scalar) {
+        return new Vec(this.x * scalar, this.y * scalar);
+    }
+
+    length() {
+        return Math.sqrt(this.lengthSquared());
+    }
+
+    lengthSquared() {
+        return this.x * this.x + this.y * this.y;
     }
 }
 
@@ -24,7 +43,7 @@ class GameObject {
     //ALL OTHER ENTITY SPECIFIC DATA IS HELD IN DATA
     data;
 
-    constructor(id = -1, name = error("param", "name"), position = new Vec(0,0), angle=0, data = error("param", "data")) {
+    constructor(id = -1, name = error("param", "name"), position = new Vec(0, 0), angle = 0, data = error("param", "data")) {
         // Defaults
         this.id = id;
         this.name = name;
@@ -49,7 +68,7 @@ window.onload = window.onresize = function () {
 
 //THIS ENTITY
 // playerEntity hitbox will be constant 20 units
-const client = new GameObject(undefined, "playerEntity", undefined, undefined, {heldItem:"fists", messageQueue:[]});
+const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: "fists", messageQueue: [] });
 
 let ticks = 0;
 let serverEntities = [];
@@ -72,27 +91,82 @@ let chatInput = "";
 createMap();
 
 function createMap() {
-    tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
-    tiles.push(new GameObject(undefined, "rigidBody", new Vec(100,-100), 0, {shape:"circle", radius:100}));
-    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, 100), 0, {shape:"circle", radius:100}));
-    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100,-100), 0, {shape:"circle", radius:100}));
+    //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, -100), 0, { shape: "circle", radius: 100 }));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, 100), 0, { shape: "circle", radius: 100 }));
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, -100), 0, { shape: "circle", radius: 100 }));
+
+    tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, 200), 0, { shape: "rectangle", width: 100, height: 100 }));
 }
 
 function doCollisions() {
     for (const tile of tiles) {
-        resolveCollision(tile);
+        if (AABB(tile)) {
+            resolveCollision(tile);
+        }
     }
 }
 
-function resolveCollision(tile) {
+function AABB (tile) {
+    //our AABB hitbox is twice as large as our normal
+    const clientX = client.position.x - playerRadius * 2;
+    const clientY = client.position.y - playerRadius * 2;
+    let tileX = tile.position.x;
+    let tileY = tile.position.y;
+    let tileWidth = tile.data.width;
+    let tileHeight = tile.data.height;
     if (tile.data.shape === "circle") {
-        const dx = client.position.x - tile.position.x;
-        const dy = client.position.y - tile.position.y;
-        const sumRadius = 20 + tile.data.radius;
-        if (dx * dx + dy * dy < sumRadius * sumRadius) {
-            const hypo = Math.sqrt(dx * dx + dy * dy);
-            client.position.x = tile.position.x + dx / hypo * (sumRadius + 1);
-            client.position.y = tile.position.y + dy / hypo * (sumRadius + 1);
+        tileX -= tile.data.radius;
+        tileY -= tile.data.radius;
+        tileWidth = tile.data.radius * 2;
+        tileHeight = tile.data.radius * 2;
+    }
+    // AABB check
+    if (clientX + playerRadius * 4 >= tileX &&
+        tileX + tileWidth >= clientX &&
+        clientY + playerRadius * 4 >= tileY &&
+        tileY + tileHeight >= clientY
+        ) {
+            console.log("AABB");
+        return true;
+    }
+    return false
+}
+
+//TODO: OPTIMIZATIONS FOR THIS CODE ONLY DO COLLISION CALCULATIONS FOR OBJECTS WHICH ARE CLOSE
+function resolveCollision(tile) {
+    const clientX = client.position.x;
+    const clientY = client.position.y;
+    const tileX = tile.position.x;
+    const tileY = tile.position.y;
+
+    if (tile.data.shape === "circle") {
+        const distanceBetween = new Vec(clientX - tileX, clientY - tileY);
+        const sumRadius = playerRadius + tile.data.radius;
+
+        if (distanceBetween.lengthSquared() <= sumRadius * sumRadius) { //collision detected
+            const hypo = distanceBetween.length();
+            client.position.x = tileX + distanceBetween.x / hypo * (sumRadius + 1);
+            client.position.y = tileY + distanceBetween.y / hypo * (sumRadius + 1);
+        }
+    } else if (tile.data.shape === "rectangle") {
+        const width = tile.data.width;
+        const height = tile.data.height;
+        const nearestPoint = new Vec(Math.max(tileX, Math.min(tileX + width, clientX)), Math.max(tileY, Math.min(tileY + height, clientY)));
+        const distanceToCircle = new Vec(nearestPoint.x - clientX, nearestPoint.y - clientY);
+
+        //console.log(nearestPoint);
+        //console.log(distanceToCircle);
+        //console.log(distanceToCircle.lengthSquared());
+
+        if (distanceToCircle.lengthSquared() <= playerRadius * playerRadius) {
+            const magnitude = distanceToCircle.length();
+            const unitVector = distanceToCircle.scale(-1 / magnitude);
+            const overlap = Math.abs(playerRadius - magnitude);
+            const displacementVector = unitVector.scale(overlap);
+            //console.log(displacementVector);
+            client.position.x += displacementVector.x || 0;
+            client.position.y += displacementVector.y || 0;
         }
     }
 }
@@ -137,8 +211,8 @@ function render() {
     //WILL BE DRAWN RELATIVE TO 0,0 USING THE CONTEXT OF THE CAMERA
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
-    
-    drawCircle(0,0,5,"black");
+
+    drawCircle(0, 0, 5, "black");
 
     //renders provided by the server
     for (const entity of serverEntities) {
@@ -147,7 +221,7 @@ function render() {
                 drawPlayer(entity);
             } else if (entity.name = "bullet") {
                 drawBullet(entity);
-            }   
+            }
         }
     }
     for (const tile of tiles) {
@@ -180,14 +254,17 @@ function drawPlayer(entity) {
     ctx.translate(entity.position.x, entity.position.y);
 
     drawChatBubble(entity.data.messageQueue, color);
+    if (devMode.AABB) {
+        drawRectangle(-40,-40, 80, 80, "red", false);
+    }
 
     ctx.rotate(-entity.angle);
 
-    if (entity.id === client.id && devMode) {
-        drawRectangle(-1000,-1,2000,2, "red");
+    if (entity.id === client.id && devMode.ray) {
+        drawRectangle(-1000, -1, 2000, 2, "red");
     }
     //draw body
-    drawCircle(0, 0, 20, color, "black");
+    drawCircle(0, 0, 20, color, /*"black"*/);
 
     if (entity.data.heldItem === "fists") {
         drawCircle(15, 15, 10, color, "black");
@@ -203,7 +280,13 @@ function drawPlayer(entity) {
 function drawTile(tile) {
     if (tile.data.shape === "circle") {
         drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
+        if (devMode.AABB) {
+            drawRectangle(tile.position.x-tile.data.radius, tile.position.y-tile.data.radius, tile.data.radius*2, tile.data.radius*2, "red", false);
+        }
+    } else if (tile.data.shape === "rectangle") {
+        drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, "red");
     }
+    
 }
 
 function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
@@ -220,11 +303,17 @@ function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
     }
 }
 
-function drawRectangle(x, y, width, height, color = "black") {
+function drawRectangle(x, y, width, height, color = "black", fill = true) {
     ctx.beginPath();
     ctx.fillStyle = color;
-    ctx.rect(x,y,width,height);
-    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.rect(x, y, width, height);
+    if (fill) {
+        ctx.fill();
+    } else {
+        ctx.stroke();
+    }
 }
 
 function drawGun(length) {
@@ -287,30 +376,48 @@ function drawChatBubble(messages, color) {
 // CLIENT HAX --------------------- 
 function updatePosition() {
     //read keys
-    if (keyPresses.up) {
-        velocity.y -= 4;
-    }
-    if (keyPresses.left) {
-        velocity.x -= 4;
-    }
-    if (keyPresses.down) {
-        velocity.y += 4;
-    }
-    if (keyPresses.right) {
-        velocity.x += 4;
-    }
+    if (!devMode.movementent) {
+        if (keyPresses.up) {
+            velocity.y -= velocityFactor;
+        }
+        if (keyPresses.left) {
+            velocity.x -= velocityFactor;
+        }
+        if (keyPresses.down) {
+            velocity.y += velocityFactor;
+        }
+        if (keyPresses.right) {
+            velocity.x += velocityFactor;
+        }
 
-    //update pos
-    client.position.x += velocity.x;
-    client.position.y += velocity.y;
+        //update pos
+        client.position.x += velocity.x;
+        client.position.y += velocity.y;
 
-    //drag
-    velocity.x *= 0.8;
-    velocity.y *= 0.8;
+        //drag
+        velocity.x *= 0.8;
+        velocity.y *= 0.8;
 
-    if (Math.abs(velocity.x) < 1) velocity.x = 0;
-    if (Math.abs(velocity.y) < 1) velocity.y = 0;
-
+        if (Math.abs(velocity.x) < 1) velocity.x = 0;
+        if (Math.abs(velocity.y) < 1) velocity.y = 0;
+    } else {
+        if (keyPresses.up) {
+            client.position.y -= 2;
+            velocity.y = -1;
+        }
+        if (keyPresses.left) {
+            client.position.x -= 2;
+            velocity.x = -1;
+        }
+        if (keyPresses.down) {
+            client.position.y += 2;
+            velocity.y = 1;
+        }
+        if (keyPresses.right) {
+            client.position.x += 2;
+            velocity.x = 1;
+        }
+    }
     //console.log(client.position.x, + " " +   client.position.y);
 }
 
@@ -335,7 +442,7 @@ function updateCamera() {
 }
 
 function updateMouseAngle() {
-    client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y , mousePos.x - client.position.x + camera.x);
+    client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     //console.log(client.angle * 180 / Math.PI);
 }
 
@@ -353,7 +460,7 @@ window.addEventListener("keydown", (key) => {
             case "Enter": {
                 //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
                 //socket.emit("chat", messagePackage);
-                const messagePackage = {message: chatInput, time: new Date().getTime()};
+                const messagePackage = { message: chatInput, time: new Date().getTime() };
                 client.data.messageQueue.push(messagePackage);
                 chatInput = "";
                 currentScreen = "game";
@@ -419,7 +526,7 @@ window.addEventListener("keyup", (key) => {
 });
 
 window.addEventListener("mousemove", (mouse) => {
-    mousePos.x = mouse.clientX; 
+    mousePos.x = mouse.clientX;
     mousePos.y = mouse.clientY;
 
 });
