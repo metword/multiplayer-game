@@ -6,7 +6,7 @@ const tps = 1000 / 60;
 const velocityFactor = 2;
 // maybe player size can edit the actual sprite?
 const playerRadius = 20;
-const playerColor = "";
+const playerColor = "rgb(0,255,0)";
 const enemyColor = "rgb(255,0,0)";
 const devMode = { ray: false, movementent: false , AABB: false};
 
@@ -80,7 +80,7 @@ const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
 const mousePos = new Vec(0, 0);
 
 //to add items to hotbar we just need to do /push("item");
-const hotbar = ["fists", "gun"];
+const hotbar = ["fists", "bow"];
 let hotbarSlot = 0;
 
 //screens: game, chat,
@@ -108,7 +108,7 @@ function doCollisions() {
 }
 
 function AABB (tile) {
-    //our AABB hitbox is twice as large as our normal
+    // Our AABB hitbox is twice as large as our normal
     const clientX = client.position.x - playerRadius * 2;
     const clientY = client.position.y - playerRadius * 2;
     let tileX = tile.position.x;
@@ -127,7 +127,9 @@ function AABB (tile) {
         clientY + playerRadius * 4 >= tileY &&
         tileY + tileHeight >= clientY
         ) {
+        if (devMode.AABB) {
             console.log("AABB");
+        }
         return true;
     }
     return false
@@ -239,7 +241,8 @@ function clearCanvas() {
 //  RENDERING   //
 //////////////////
 
-
+//ADD LAYERING
+//ADD BOW
 //TODO, make drawPlayer take an entity and draw it as well as it can based on what it has as properties.
 function drawPlayer(entity) {
     let color;
@@ -269,9 +272,10 @@ function drawPlayer(entity) {
     if (entity.data.heldItem === "fists") {
         drawCircle(15, 15, 10, color, "black");
         drawCircle(15, -15, 10, color, "black");
-    } else if (entity.data.heldItem === "gun") {
-        drawGun(20);
-        drawCircle(15, 3, 10, color, "black");
+    } else if (entity.data.heldItem === "bow") {
+        drawBow();
+        //drawCircle(15, 15, 10, color, "black");
+        //drawCircle(15, -15, 10, color, "black");
     }
 
     ctx.restore();
@@ -332,7 +336,26 @@ function drawGun(length) {
     //ctx.stroke();
 }
 
-function drawBullet(entity) {
+function drawBow() {
+    ctx.beginPath();
+    ctx.arc(playerRadius*2,-playerRadius*2,playerRadius, Math.PI, Math.PI * 0.75, true);
+    ctx.arc(playerRadius*0.5,0,playerRadius*1.5, Math.PI * 1.75, Math.PI * 0.25, false);
+    ctx.arc(playerRadius*2,playerRadius*2,playerRadius, Math.PI * 1.25, Math.PI, true);
+    ctx.arc(playerRadius*3.75,playerRadius*2, playerRadius*2.75, Math.PI, Math.PI * 1.1, false);
+    ctx.arc(-playerRadius*0.25,0,playerRadius * 1.75, Math.PI * 0.2, -Math.PI * 0.2, true);
+    ctx.arc(playerRadius*3.75,-playerRadius*2, playerRadius*2.75, Math.PI*0.9, Math.PI, false);
+
+    
+    
+    //ctx.strokeStyle = "black";
+    //ctx.lineWidth = 4;
+    //ctx.stroke();
+    ctx.fillStyle = "brown";
+    ctx.fill();
+    
+}
+
+function drawArrow(entity) {
 
 }
 
@@ -442,7 +465,7 @@ function updateCamera() {
 }
 
 function updateMouseAngle() {
-    client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
+    //client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     //console.log(client.angle * 180 / Math.PI);
 }
 
@@ -557,28 +580,3 @@ function error(type, data) {
         throw new Error();
     }
 }
-/*const log = (text) => {
-    const list = document.querySelector("#message-history");
-    const elem = document.createElement("div");
-    elem.innerHTML = text;
-    elem.className = "chat-message";
-    list.prepend(elem);
-}
-
-const onChatSubmitted = (e) => {
-    e.preventDefault();
-    const input = document.querySelector("#input");
-    const text = input.value;
-    input.value = "";
-    socket.emit("message", text);
-}
-
-(() => {
-    socket.on("message", (text) => {
-        log(text);
-    });
-    document
-    .querySelector("#chat-widget")
-    .addEventListener("submit", onChatSubmitted);
-
-})();*/
