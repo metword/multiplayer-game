@@ -68,6 +68,16 @@ window.onload = (function () {
         subDivision(angleRadians) {
             return Math.floor(0.5 * this.anglesPerRev * angleRadians / Math.PI) % this.anglesPerRev;
         }
+        clamp(angleRadians) {
+            if (angleRadians < 0) {
+                angleRadians = Math.PI * 2 + angleRadians;
+            }
+            while (angleRadians > Math.PI * 2) {
+                angleRadians -= Math.PI * 2;
+            }
+            console.log(angleRadians);
+            return angleRadians;
+        }
     }
 
     //when we draw the image, we're giving it the whole thing with a little dot in the middle, if we just draw it at 0, 0 it doesnt make any sense.
@@ -99,11 +109,13 @@ window.onload = (function () {
             this.rotation = rotation;
             this.angleHelper = angleHelper
         }
-        rotate(radians) {
+        rotate(angleRadians) {
+            //CLAMPED BETWEEN 0 AND 2PI
+            angleRadians = this.angleHelper.clamp(angleRadians);
             //grid fixed rotation
-            const indexY = Math.floor(this.numAngles * radians * 0.5 / Math.PI) % this.numAngles;
+            const indexY = Math.floor(this.numAngles * angleRadians * 0.5 / Math.PI) % this.numAngles;
             const newY = indexY * this.height;
-            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, this.translation, radians, this.angleHelper); 
+            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, this.translation, angleRadians, this.angleHelper); 
         }
         translate(x, y) { // xcosA + -ysinA, xsinA + ycosA
             const translation = new Vec(0, 0);
@@ -201,7 +213,7 @@ window.onload = (function () {
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
     const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 16);
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 64);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     
     const tps = 1000 / 60;
@@ -400,9 +412,9 @@ window.onload = (function () {
         renderer.drawSprite(spriteManager.get(2));
 
         if (entity.data.heldItem === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(4).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(4).rotate(entity.angle + Math.PI * 0.5).translate(-15, 15));
         } else if (client.data.heldItem === "sword") {
-            renderer.drawSprite(spriteManager.get(8).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(8).rotate(entity.angle + Math.PI * 0.5).translate(-15, 15));
         }
 
         //DRAW HANDS
@@ -566,11 +578,12 @@ window.onload = (function () {
     }
 
     function updateMouseAngle() {
-        let angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
-        if (angle < 0) {
-            angle = Math.PI * 2 + angle;
-        }
-        client.angle = angle;
+        //let angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
+        //if (angle < 0) {
+        //    angle = Math.PI * 2 + angle;
+        //}
+        //client.angle = angle;
+        client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     }
 
     function nextItem() {
