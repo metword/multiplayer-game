@@ -58,7 +58,7 @@ window.onload = (function () {
                 this.cosTable.push(Math.cos(i / this.anglesPerRev * 2 * Math.PI));
             }
         }
-        sin(angleRadians) {
+        sin(angleRadians) { //MUST BE CLAMPED BEFORE USING
             return this.sinTable[this.subDivision(angleRadians)];
         }
         cos(angleRadians) {
@@ -110,17 +110,25 @@ window.onload = (function () {
         }
         rotate(angleRadians) {
             //CLAMPED BETWEEN 0 AND 2PI
-            angleRadians = this.angleHelper.clamp(angleRadians);
-            //grid fixed rotation
-            const indexY = Math.floor(this.numAngles * angleRadians * 0.5 / Math.PI) % this.numAngles;
+            const changeAngle = this.angleHelper.clamp(angleRadians);
+            const totalAngle = this.angleHelper.clamp(this.rotation + changeAngle);
+
+            //EXISTING TRANSLATION BEING ROTATED BY THE CHANGE_ANGLE
+            const translation = new Vec(this.translation.x, this.translation.y);
+            translation.x =  translation.x * this.angleHelper.cos(changeAngle) + translation.y * this.angleHelper.sin(changeAngle);
+            translation.y = -translation.x * this.angleHelper.sin(changeAngle) + translation.y * this.angleHelper.cos(changeAngle);
+
+            //Y POS OF OUR IMAGE
+            const indexY = Math.floor(this.numAngles * totalAngle * 0.5 / Math.PI) % this.numAngles;
             const newY = indexY * this.height;
-            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, this.translation, angleRadians, this.angleHelper); 
+            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, totalAngle, this.angleHelper); 
         }
-        translate(x, y) { // xcosA + -ysinA, xsinA + ycosA
-            const translation = new Vec(0, 0);
-            translation.x =  x * this.angleHelper.cos(this.rotation) + y * this.angleHelper.sin(this.rotation);
-            translation.y = -x * this.angleHelper.sin(this.rotation) + y * this.angleHelper.cos(this.rotation);
-            return new Sprite(this.x, this.y, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, this.rotation, this.angleHelper);
+        startAt(x = 0, y = 0, startAngle = 0) { // xcosA + -ysinA, xsinA + ycosA
+            const translation = new Vec(x, y);
+            const rotation = startAngle;
+            // x * this.angleHelper.cos(this.rotation) + y * this.angleHelper.sin(this.rotation);
+            //-x * this.angleHelper.sin(this.rotation) + y * this.angleHelper.cos(this.rotation);
+            return new Sprite(this.x, this.y, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, rotation, this.angleHelper);
         }
     }
 
@@ -212,7 +220,7 @@ window.onload = (function () {
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
     const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 64);
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     
     const tps = 1000 / 60;
@@ -406,23 +414,26 @@ window.onload = (function () {
         //CHAT BUBBLE
         drawChatBubble(entity.data.messageQueue, color);
 
+        
         //DRAW PLAYER BODY
         renderer.drawSprite(spriteManager.get(0));
         renderer.drawSprite(spriteManager.get(2));
-
+ 
+        //DRAW WEAPON
         if (entity.data.heldItem === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(4).rotate(entity.angle + Math.PI * 0.5).translate(-15, 15));
+            renderer.drawSprite(spriteManager.get(4).startAt(20,-30).rotate(entity.angle));
         } else if (client.data.heldItem === "sword") {
-            renderer.drawSprite(spriteManager.get(8).rotate(entity.angle + Math.PI * 0.5).translate(-15, 15));
+            renderer.drawSprite(spriteManager.get(8).startAt(3,15, Math.PI * 0.5).rotate(entity.angle));
+            //renderer.drawSprite(spriteManager.get(8).rotate(entity.angle + Math.PI * 0.75).translate(-25, -12)); 
+
         }
 
         //DRAW HANDS
-        //console.log(entity.angle);
-        renderer.drawSprite(spriteManager.get(1).rotate(entity.angle).translate(15, 15));
-        renderer.drawSprite(spriteManager.get(3).rotate(entity.angle).translate(15, 15));
+        renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
 
-        renderer.drawSprite(spriteManager.get(1).rotate(entity.angle).translate(15, -15));
-        renderer.drawSprite(spriteManager.get(3).rotate(entity.angle).translate(15, -15));
+        renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
 
 
         //HITBOX
@@ -577,11 +588,6 @@ window.onload = (function () {
     }
 
     function updateMouseAngle() {
-        //let angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
-        //if (angle < 0) {
-        //    angle = Math.PI * 2 + angle;
-        //}
-        //client.angle = angle;
         client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     }
 
