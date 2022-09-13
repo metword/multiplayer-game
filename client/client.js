@@ -107,7 +107,6 @@ window.onload = (function () {
         }
         translate(x, y) { // xcosA + -ysinA, xsinA + ycosA
             const translation = new Vec(0, 0);
-            console.log(this.rotation);
             translation.x =  x * this.angleHelper.cos(this.rotation) + y * this.angleHelper.sin(this.rotation);
             translation.y = -x * this.angleHelper.sin(this.rotation) + y * this.angleHelper.cos(this.rotation);
             return new Sprite(this.x, this.y, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, this.rotation, this.angleHelper);
@@ -202,7 +201,7 @@ window.onload = (function () {
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
     const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 24);
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 16);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     
     const tps = 1000 / 60;
@@ -396,8 +395,24 @@ window.onload = (function () {
         //CHAT BUBBLE
         drawChatBubble(entity.data.messageQueue, color);
 
-        //DRAW PLAYER HELD ITEM
-        renderer.drawSprite(spriteManager.get(0).rotate(entity.angle));
+        //DRAW PLAYER BODY
+        renderer.drawSprite(spriteManager.get(0));
+        renderer.drawSprite(spriteManager.get(2));
+
+        if (entity.data.heldItem === "pickaxe") {
+            renderer.drawSprite(spriteManager.get(4).rotate(entity.angle));
+        } else if (client.data.heldItem === "sword") {
+            renderer.drawSprite(spriteManager.get(8).rotate(entity.angle));
+        }
+
+        //DRAW HANDS
+        //console.log(entity.angle);
+        renderer.drawSprite(spriteManager.get(1).rotate(entity.angle).translate(15, 15));
+        renderer.drawSprite(spriteManager.get(3).rotate(entity.angle).translate(15, 15));
+
+        renderer.drawSprite(spriteManager.get(1).rotate(entity.angle).translate(15, -15));
+        renderer.drawSprite(spriteManager.get(3).rotate(entity.angle).translate(15, -15));
+
 
         //HITBOX
         if (devMode.AABB) {
@@ -443,29 +458,6 @@ window.onload = (function () {
         } else {
             ctx.stroke();
         }
-    }
-
-    function drawGun(length) {
-        //drawRectangle(15,-4,15+length,8,"black");
-        ctx.beginPath();
-
-        ctx.arc(15, 0, 5, Math.PI * 0.5, Math.PI * 1.5);
-        ctx.lineTo(15 + length, -5);
-        ctx.arc(15 + length, 0, 5, Math.PI * 1.5, Math.PI * 0.5);
-        ctx.lineTo(15, 5);
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        //ctx.lineWidth = 2;
-        //ctx.strokeStyle = "black";
-        //ctx.stroke();
-    }
-
-    function drawSprite(sprite, x, y, angle) {
-        ctx.save();
-        ctx.rotate(-angle);
-        ctx.drawImage(sprite.source, x, y);
-        ctx.restore();
     }
 
     //we'll have to make a function similar to breakrenderedchatmessages...
@@ -574,8 +566,11 @@ window.onload = (function () {
     }
 
     function updateMouseAngle() {
-        client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
-        //console.log(client.angle * 180 / Math.PI);
+        let angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
+        if (angle < 0) {
+            angle = Math.PI * 2 + angle;
+        }
+        client.angle = angle;
     }
 
     function nextItem() {
