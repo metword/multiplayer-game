@@ -75,7 +75,6 @@ window.onload = (function () {
             while (angleRadians > Math.PI * 2) {
                 angleRadians -= Math.PI * 2;
             }
-            console.log(angleRadians);
             return angleRadians;
         }
     }
