@@ -115,8 +115,8 @@ window.onload = (function () {
 
             //EXISTING TRANSLATION BEING ROTATED BY THE CHANGE_ANGLE
             const translation = new Vec(this.translation.x, this.translation.y);
-            translation.x =  translation.x * this.angleHelper.cos(changeAngle) + translation.y * this.angleHelper.sin(changeAngle);
-            translation.y = -translation.x * this.angleHelper.sin(changeAngle) + translation.y * this.angleHelper.cos(changeAngle);
+            translation.x =  this.translation.x * this.angleHelper.cos(changeAngle) + this.translation.y * this.angleHelper.sin(changeAngle);
+            translation.y = -this.translation.x * this.angleHelper.sin(changeAngle) + this.translation.y * this.angleHelper.cos(changeAngle);
 
             //Y POS OF OUR IMAGE
             const indexY = Math.floor(this.numAngles * totalAngle * 0.5 / Math.PI) % this.numAngles;
@@ -206,12 +206,36 @@ window.onload = (function () {
         }
     }
 
+    class Animator {
+        startTime;
+        constructor() {
+            this.startTime = -1;
+        }
+        start() {
+
+        }
+        animate(name) {
+            if (name === "fists") {
+                
+            } else if (name === "pickaxe") {
+
+            } else if (name === "sword") {
+
+            }
+        }
+    }
+
     const keyPresses = {
         up: false,
         left: false,
         down: false,
         right: false,
-        shift: false
+        shift: false,
+        
+    }
+    const mouse = {
+        mouseDown: false,
+        clickCreation: 0,
     }
     
     const socket = io();
@@ -222,14 +246,16 @@ window.onload = (function () {
     const spriteManager = new SpriteManager();
     spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
+    const animator = new Animator();
     
     const tps = 1000 / 60;
+    const useDelay = 400;
     const velocityFactor = 2;
     const playerRadius = 20;
 
     //THIS ENTITY
     // playerEntity hitbox will be constant 20 units
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: "fists", messageQueue: [] });
+    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: "fists", animationStart: 0, messageQueue: [] });
 
     let serverEntities = [];
     const tiles = [];
@@ -356,6 +382,7 @@ window.onload = (function () {
         doCollisions();
         updateCamera();
         updateMouseAngle();
+        fireMouseClicks();
 
         render();
 
@@ -414,26 +441,33 @@ window.onload = (function () {
         //CHAT BUBBLE
         drawChatBubble(entity.data.messageQueue, color);
 
-        
         //DRAW PLAYER BODY
         renderer.drawSprite(spriteManager.get(0));
         renderer.drawSprite(spriteManager.get(2));
  
         //DRAW WEAPON
         if (entity.data.heldItem === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(4).startAt(20,-30).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(4).startAt(20, -30).rotate(entity.angle));
+
+            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
+
         } else if (client.data.heldItem === "sword") {
-            renderer.drawSprite(spriteManager.get(8).startAt(3,15, Math.PI * 0.5).rotate(entity.angle));
-            //renderer.drawSprite(spriteManager.get(8).rotate(entity.angle + Math.PI * 0.75).translate(-25, -12)); 
+            renderer.drawSprite(spriteManager.get(8).startAt(3, 15, Math.PI * 0.5).rotate(entity.angle));
 
+            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
+
+        } else if (client.data.heldItem === "fists") {
+            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
         }
-
-        //DRAW HANDS
-        renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
-        renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
-
-        renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
-        renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
 
 
         //HITBOX
@@ -489,7 +523,7 @@ window.onload = (function () {
 
             const fadeTime = 3000;
 
-            const timeLeft = fadeTime + messages[i].time - new Date().getTime();
+            const timeLeft = fadeTime + messages[i].time - Date.now();
             if (timeLeft > 0) {
                 const j = messages.length - 1 - i;
                 const message = messages[i].message
@@ -605,7 +639,7 @@ window.onload = (function () {
                 case "Enter": {
                     //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
                     //socket.emit("chat", messagePackage);
-                    const messagePackage = { message: chatInput, time: new Date().getTime() };
+                    const messagePackage = { message: chatInput, time: Date.now() };
                     client.data.messageQueue.push(messagePackage);
                     chatInput = "";
                     currentScreen = "game";
@@ -649,7 +683,9 @@ window.onload = (function () {
                     break;
                 case "t": currentScreen = "chat";
                     break;
-                case "q": client.data.heldItem = nextItem();
+                case "q": {
+                    client.data.heldItem = nextItem();
+                }
                     break;
             }
         }
@@ -678,6 +714,22 @@ window.onload = (function () {
         }
     }
 
+    function fireMouseClicks() {
+        if (mouse.mouseDown) {
+            const time = Date.now();
+            if (mouse.clickCreation + useDelay < time) {
+                mouse.clickCreation = time;
+                animator.animate(client.data.heldItem, time);
+                interact();
+                console.log("ANIMATING + ACTION")
+            }
+        }
+    }
+
+    function interact() {
+        //check collision between player interaction hitbox and all entities which can be interacted with?
+    }
+
     window.addEventListener("load", (event) => {
         canvas.height = window.innerHeight;
         canvas.width = window.innerWidth;
@@ -694,8 +746,12 @@ window.onload = (function () {
 
     });
 
-    document.querySelector("#canvas").addEventListener("click", (click) => {
-        console.log("click!");
+    window.addEventListener("mousedown", (event) => {
+        mouse.mouseDown = true;
+    });
+
+    window.addEventListener("mouseup", (event) => {
+        mouse.mouseDown = false;
     });
 
     socket.on("init", (id) => {
