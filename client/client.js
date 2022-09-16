@@ -115,13 +115,13 @@ window.onload = (function () {
 
             //EXISTING TRANSLATION BEING ROTATED BY THE CHANGE_ANGLE
             const translation = new Vec(this.translation.x, this.translation.y);
-            translation.x =  this.translation.x * this.angleHelper.cos(changeAngle) + this.translation.y * this.angleHelper.sin(changeAngle);
+            translation.x = this.translation.x * this.angleHelper.cos(changeAngle) + this.translation.y * this.angleHelper.sin(changeAngle);
             translation.y = -this.translation.x * this.angleHelper.sin(changeAngle) + this.translation.y * this.angleHelper.cos(changeAngle);
 
             //Y POS OF OUR IMAGE
             const indexY = Math.floor(this.numAngles * totalAngle * 0.5 / Math.PI) % this.numAngles;
             const newY = indexY * this.height;
-            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, totalAngle, this.angleHelper); 
+            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, totalAngle, this.angleHelper);
         }
         startAt(x = 0, y = 0, startAngle = 0) { // xcosA + -ysinA, xsinA + ycosA
             const translation = new Vec(x, y);
@@ -140,7 +140,7 @@ window.onload = (function () {
         ctx;
         constructor() {
             this.sprites = [];
-            this.empty = new Sprite(0,0,0,0,0,0,1);
+            this.empty = new Sprite(0, 0, 0, 0, 0, 0, 1);
 
             this.nextOpenColPixel = 0;
             this.spriteSheet = document.createElement("canvas");
@@ -201,27 +201,8 @@ window.onload = (function () {
         }
 
         drawSprite(sprite) {
-            this.ctx.drawImage(this.spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height, 
+            this.ctx.drawImage(this.spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height,
                 sprite.translation.x - sprite.centerX, sprite.translation.y - sprite.centerY, sprite.width, sprite.height);
-        }
-    }
-
-    class Animator {
-        startTime;
-        constructor() {
-            this.startTime = -1;
-        }
-        start() {
-
-        }
-        animate(name) {
-            if (name === "fists") {
-                
-            } else if (name === "pickaxe") {
-
-            } else if (name === "sword") {
-
-            }
         }
     }
 
@@ -231,13 +212,14 @@ window.onload = (function () {
         down: false,
         right: false,
         shift: false,
-        
+
     }
     const mouse = {
         mouseDown: false,
+        clickCount: 0,
         clickCreation: 0,
     }
-    
+
     const socket = io();
     const devMode = { ray: false, movementent: false, AABB: false };
 
@@ -246,10 +228,10 @@ window.onload = (function () {
     const spriteManager = new SpriteManager();
     spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
-    const animator = new Animator();
-    
+    //const animator = new Animator();
+
     const tps = 1000 / 60;
-    const useDelay = 400;
+    const useDelay = 600;
     const velocityFactor = 2;
     const playerRadius = 20;
 
@@ -385,7 +367,6 @@ window.onload = (function () {
         fireMouseClicks();
 
         render();
-
     }
     setInterval(clientLoop, tps);
 
@@ -444,30 +425,22 @@ window.onload = (function () {
         //DRAW PLAYER BODY
         renderer.drawSprite(spriteManager.get(0));
         renderer.drawSprite(spriteManager.get(2));
- 
+
         //DRAW WEAPON
+        const animation = animate(entity.data.heldItem, entity.data.animationStart);
+        const r = animation.r; // right hand vec
+        const l = animation.l; // left hand vec
+        const w = animation.w; // weapon vec
+        const a = animation.a; // angle
         if (entity.data.heldItem === "pickaxe") {
             renderer.drawSprite(spriteManager.get(4).startAt(20, -30).rotate(entity.angle));
-
-            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
-
         } else if (client.data.heldItem === "sword") {
             renderer.drawSprite(spriteManager.get(8).startAt(3, 15, Math.PI * 0.5).rotate(entity.angle));
-
-            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
-
-        } else if (client.data.heldItem === "fists") {
-            renderer.drawSprite(spriteManager.get(1).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, 15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(1).startAt(15, -15).rotate(entity.angle));
-            renderer.drawSprite(spriteManager.get(3).startAt(15, -15).rotate(entity.angle));
         }
+        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y, a).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y, a).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y, a).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y, a).rotate(entity.angle));
 
 
         //HITBOX
@@ -625,8 +598,12 @@ window.onload = (function () {
         client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     }
 
-    function nextItem() {
-        hotbarSlot++;
+    function switchItem() { //clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
+        client.animationStart = undefined;
+        mouse.mouseDown = false;
+        //mouse.clickCount = 0;
+
+        hotbarSlot++; //currently just goes to the next hotbar slot
         if (hotbarSlot == hotbar.length) {
             hotbarSlot = 0;
         }
@@ -684,7 +661,7 @@ window.onload = (function () {
                 case "t": currentScreen = "chat";
                     break;
                 case "q": {
-                    client.data.heldItem = nextItem();
+                    client.data.heldItem = switchItem();
                 }
                     break;
             }
@@ -714,19 +691,69 @@ window.onload = (function () {
         }
     }
 
-    function fireMouseClicks() {
-        if (mouse.mouseDown) {
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    function fireMouseClicks() { //called every client tick
+        if (mouse.mouseDown || mouse.clickCount == 1) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
             const time = Date.now();
-            if (mouse.clickCreation + useDelay < time) {
+            if (mouse.clickCreation + useDelay < time) { // fires an input
                 mouse.clickCreation = time;
-                animator.animate(client.data.heldItem, time);
-                interact();
-                console.log("ANIMATING + ACTION")
+                mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
+
+
+                interact(); //does interactions
+
+                //console.log("INPUT");
+            }
+        }
+    }
+
+    function animate(name, animationStart) {
+        if (name === "fists") {
+            if (animationStart + useDelay > Date.now()) {
+                const fourthDelay = useDelay * 0.25;
+                const dr = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay) + fourthDelay, 0) * 0.05;
+                const dl = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay * 3) + fourthDelay, 0) * 0.05;
+                return {
+                    r: new Vec(15 + dr, 15),
+                    l: new Vec(15 + dl, -15),
+                }
+            } else {
+                return {
+                    r: new Vec(15, -15),
+                    l: new Vec(15, 15),
+                }
+            }
+        } else if (name === "pickaxe") {
+            if (animationStart + useDelay > Date.now()) {
+                const a = 0;
+                return {
+                    r: new Vec(15, -15),
+                    l: new Vec(15, 15),
+                    a: a
+                }
+            } else {
+                return {
+                    r: new Vec(15, -15),
+                    l: new Vec(15, 15),
+                    a: 0,
+                }
+            }
+        } else if (name === "sword") {
+            if (animationStart + useDelay > Date.now()) {
+
+            } else {
+                return {
+                    r: new Vec(15, -15),
+                    l: new Vec(15, 15),
+                    w: new Vec(15, 15),
+                }
             }
         }
     }
 
     function interact() {
+        client.data.animationStart = Date.now();
         //check collision between player interaction hitbox and all entities which can be interacted with?
     }
 
@@ -748,6 +775,7 @@ window.onload = (function () {
 
     window.addEventListener("mousedown", (event) => {
         mouse.mouseDown = true;
+        mouse.clickCount++;
     });
 
     window.addEventListener("mouseup", (event) => {
@@ -761,7 +789,6 @@ window.onload = (function () {
     });
 
     socket.on("getclientdata", () => {
-        //TODO: EMIT THE WHOLE ENTITY HERE
         socket.emit("getclientdata", client);
     });
 
