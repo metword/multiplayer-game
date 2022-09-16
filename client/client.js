@@ -226,7 +226,7 @@ window.onload = (function () {
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
     const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 36);
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     //const animator = new Animator();
 
