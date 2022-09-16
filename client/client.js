@@ -226,13 +226,13 @@ window.onload = (function () {
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
     const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 36);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     //const animator = new Animator();
 
     const tps = 1000 / 60;
     const useDelay = 800;
-    const velocityFactor = 2;
+    const velocityFactor = 1;
     const playerRadius = 20;
 
     //THIS ENTITY
@@ -435,7 +435,7 @@ window.onload = (function () {
         if (entity.data.heldItem === "pickaxe") {
             renderer.drawSprite(spriteManager.get(4).startAt(w.x, w.y).rotate(entity.angle + a));
         } else if (entity.data.heldItem === "sword") {
-            renderer.drawSprite(spriteManager.get(8).startAt(3, 15, Math.PI * 0.5).rotate(entity.angle));
+            renderer.drawSprite(spriteManager.get(8).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
         }
         renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
         renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
@@ -548,11 +548,11 @@ window.onload = (function () {
             client.position.y += velocity.y;
 
             //drag
-            velocity.x *= 0.8;
-            velocity.y *= 0.8;
+            velocity.x *= 0.75;
+            velocity.y *= 0.75;
 
-            if (Math.abs(velocity.x) < 1) velocity.x = 0;
-            if (Math.abs(velocity.y) < 1) velocity.y = 0;
+            if (Math.abs(velocity.x) < 0.5) velocity.x = 0;
+            if (Math.abs(velocity.y) < 0.5) velocity.y = 0;
         } else {
             if (keyPresses.up) {
                 client.position.y -= 2;
@@ -710,12 +710,13 @@ window.onload = (function () {
 
     function animate(name, animationStart) {
         if (name === "fists") {
-            const r = new Vec(15, -15);
-            const l = new Vec(15, 15);
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
             if (animationStart + useDelay > Date.now()) {
+                const x = Date.now() - animationStart;
                 const fourthDelay = useDelay * 0.25;
-                const dr = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay) + fourthDelay, 0) * 0.05;
-                const dl = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay * 3) + fourthDelay, 0) * 0.05;
+                const dr = Math.max(-Math.abs(x - fourthDelay) + fourthDelay, 0) * 0.05;
+                const dl = Math.max(-Math.abs(x - fourthDelay * 3) + fourthDelay, 0) * 0.05;
                 r.x += dr;
                 l.x += dl;
             }
@@ -724,7 +725,7 @@ window.onload = (function () {
                 l: l,
                 a: 0,
             }
-        } else if (name === "pickaxe") {
+        } else if (name === "pickaxe") { // actions should have a half useDelay difference
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
             const w = new Vec(20, -30);
@@ -746,20 +747,31 @@ window.onload = (function () {
                 a: a,
             }
         } else if (name === "sword") {
+            const r = new Vec(15,15);
+            const l = new Vec(15,-15);
+            const w = new Vec(3, 15);
+            let a = 0;
             if (animationStart + useDelay > Date.now()) {
-                return {
-                    r: new Vec(15, -15),
-                    l: new Vec(15, 15),
-                    w: new Vec(15, 15),
-                    a: 0,
+                const x = Date.now() - animationStart;
+                if (x <= useDelay * 0.25) {
+                    w.x = 3 + -10 / useDelay * x; // first quarter
+                    r.x = w.x + 12; 
+                    a = -2 / useDelay * x;
+                } else if (x <= useDelay * 0.5) {
+                    w.x = 3 + 40 / useDelay * (x - useDelay * 0.25) - 2.5; // second quarter
+                    r.x = w.x + 12;
+                    a = 4 / useDelay * (x - useDelay * 0.25) - 0.5;
+                } else {
+                    w.x = 3 + -15 / useDelay * (x - useDelay * 0.5) + 7.5; // second half
+                    r.x = w.x + 12;
+                    a = -1 / useDelay * (x - useDelay * 0.5) + 0.5;
                 }
-            } else {
-                return {
-                    r: new Vec(15, -15),
-                    l: new Vec(15, 15),
-                    w: new Vec(15, 15),
-                    a: 0,
-                }
+            }
+            return {
+                r: r,
+                l: l,
+                w: w,
+                a: a,
             }
         }
     }
