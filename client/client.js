@@ -1,3 +1,16 @@
+/**
+ * TODO: 
+ * IMPLEMENT ACTUAL INVENTORY
+ * PLAYER HEALTH BAR (ONLY VISIBLE WHEN UNDER 100% HP)
+ * HITBOXES FOR INTERACTIONS - EDITING INVENTORY AND HEALTH BAR
+ * BETTER MAP WITH RESOURCE TILES
+ * CRAFTING SYSTEM TO MAKE BETTER ITEMS BASED ON INVENTORY
+ * PLAYER COLOR SELECTION
+ * MAIN MENU
+ * ANTI CHEAT 
+ */
+
+
 window.onload = (function () {
 
     class Vec {
@@ -125,10 +138,10 @@ window.onload = (function () {
         }
         startAt(x = 0, y = 0, startAngle = 0) { // xcosA + -ysinA, xsinA + ycosA
             const translation = new Vec(x, y);
-            const rotation = startAngle;
-            // x * this.angleHelper.cos(this.rotation) + y * this.angleHelper.sin(this.rotation);
-            //-x * this.angleHelper.sin(this.rotation) + y * this.angleHelper.cos(this.rotation);
-            return new Sprite(this.x, this.y, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, rotation, this.angleHelper);
+            //Y POS OF OUR IMAGE
+            const indexY = Math.floor(this.numAngles * startAngle * 0.5 / Math.PI) % this.numAngles;
+            const newY = indexY * this.height;
+            return new Sprite(this.x, newY, this.centerX, this.centerY, this.width, this.height, this.numAngles, translation, startAngle, this.angleHelper);
         }
     }
 
@@ -228,7 +241,6 @@ window.onload = (function () {
     const spriteManager = new SpriteManager();
     spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
-    //const animator = new Animator();
 
     const tps = 1000 / 60;
     const useDelay = 800;
@@ -237,7 +249,7 @@ window.onload = (function () {
 
     //THIS ENTITY
     // playerEntity hitbox will be constant 20 units
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: "fists", animationStart: 0, messageQueue: [] });
+    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: null, animationStart: 0, messageQueue: [] });
 
     let serverEntities = [];
     const tiles = [];
@@ -248,15 +260,13 @@ window.onload = (function () {
     const mousePos = new Vec(0, 0);
 
     //to add items to hotbar we just need to do /push("item");
-    const hotbar = ["fists", "pickaxe", "sword"];
-    let hotbarSlot = 0;
+    let selectedSlot = 0;
+    const inventory = [null, { name: "sword", id: 8 }, null, null, null];
 
     //screens: game, chat,
     //future? menu
     let currentScreen = "game";
     let chatInput = "";
-
-    //TODO-> PRE LOAD ALL SPRITE ROTATIONS ON A CANVAS SO THAT PERFORMANCE DOESNT TAKE A HIT DUE TO LOTS OF IMAGE ROTATIONS!!!
 
     createMap();
     function createMap() {
@@ -304,7 +314,6 @@ window.onload = (function () {
         return false
     }
 
-    //TODO: OPTIMIZATIONS FOR THIS CODE ONLY DO COLLISION CALCULATIONS FOR OBJECTS WHICH ARE CLOSE
     function resolveCollision(tile) {
         const clientX = client.position.x;
         const clientY = client.position.y;
@@ -378,7 +387,9 @@ window.onload = (function () {
         ctx.translate(-camera.x, -camera.y);
 
         drawCircle(0, 0, 5, "black");
-
+        for (const tile of tiles) {
+            drawTile(tile);
+        }
         //renders provided by the server
         for (const entity of serverEntities) {
             if (entity.id !== client.id) {
@@ -389,12 +400,12 @@ window.onload = (function () {
                 }
             }
         }
-        for (const tile of tiles) {
-            drawTile(tile);
-        }
         drawPlayer(client);
 
         ctx.restore();
+
+        drawHUD();
+
     }
 
     function clearCanvas() {
@@ -407,6 +418,22 @@ window.onload = (function () {
     //ADD LAYERING
     //ADD BOW
     //TODO, make drawPlayer take an entity and draw it as well as it can based on what it has as properties.
+
+    function drawHUD() {
+
+        for (let i = 0; i < inventory.length; i++) {
+            let color = "rgba(0,0,0,0.25)";
+            if (i === selectedSlot) color = "rgba(0,0,0,0.5)";
+            const left = 0.5 * (canvas.width - inventory.length * 100) + 100 * i + 10;
+            const top = canvas.height - 110;
+
+            drawRectangle(left, top, 100, 100, color);
+            if (inventory[i] !== null) {
+                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(left + 15, top + 85, Math.PI * 0.75));
+            }
+        }
+    }
+
     function drawPlayer(entity) {
         let color;
         if (entity.id === client.id) {
@@ -603,11 +630,12 @@ window.onload = (function () {
         mouse.mouseDown = false;
         //mouse.clickCount = 0;
 
-        hotbarSlot++; //currently just goes to the next hotbar slot
-        if (hotbarSlot == hotbar.length) {
-            hotbarSlot = 0;
+        selectedSlot++; //currently just goes to the next hotbar slot
+        if (selectedSlot == inventory.length) {
+            selectedSlot = 0;
         }
-        return hotbar[hotbarSlot];
+        if (inventory[selectedSlot] === null) return null;
+        return inventory[selectedSlot].name;
     }
 
     window.addEventListener("keydown", (key) => {
@@ -691,8 +719,6 @@ window.onload = (function () {
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     function fireMouseClicks() { //called every client tick
         if (mouse.mouseDown || mouse.clickCount == 1) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
             const time = Date.now();
@@ -709,7 +735,7 @@ window.onload = (function () {
     }
 
     function animate(name, animationStart) {
-        if (name === "fists") {
+        if (name === null) {
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
             if (animationStart + useDelay > Date.now()) {
@@ -747,15 +773,15 @@ window.onload = (function () {
                 a: a,
             }
         } else if (name === "sword") {
-            const r = new Vec(15,15);
-            const l = new Vec(15,-15);
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
             const w = new Vec(3, 15);
             let a = 0;
             if (animationStart + useDelay > Date.now()) {
                 const x = Date.now() - animationStart;
                 if (x <= useDelay * 0.25) {
                     w.x = 3 + -10 / useDelay * x; // first quarter
-                    r.x = w.x + 12; 
+                    r.x = w.x + 12;
                     a = -2 / useDelay * x;
                 } else if (x <= useDelay * 0.5) {
                     w.x = 3 + 40 / useDelay * (x - useDelay * 0.25) - 2.5; // second quarter
