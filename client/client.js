@@ -231,7 +231,7 @@ window.onload = (function () {
     //const animator = new Animator();
 
     const tps = 1000 / 60;
-    const useDelay = 600;
+    const useDelay = 800;
     const velocityFactor = 2;
     const playerRadius = 20;
 
@@ -433,14 +433,14 @@ window.onload = (function () {
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
         if (entity.data.heldItem === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(4).startAt(20, -30).rotate(entity.angle));
-        } else if (client.data.heldItem === "sword") {
+            renderer.drawSprite(spriteManager.get(4).startAt(w.x, w.y).rotate(entity.angle + a));
+        } else if (entity.data.heldItem === "sword") {
             renderer.drawSprite(spriteManager.get(8).startAt(3, 15, Math.PI * 0.5).rotate(entity.angle));
         }
-        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y, a).rotate(entity.angle));
-        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y, a).rotate(entity.angle));
-        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y, a).rotate(entity.angle));
-        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y, a).rotate(entity.angle));
+        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
 
 
         //HITBOX
@@ -599,7 +599,7 @@ window.onload = (function () {
     }
 
     function switchItem() { //clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
-        client.animationStart = undefined;
+        client.data.animationStart = 0;
         mouse.mouseDown = false;
         //mouse.clickCount = 0;
 
@@ -710,43 +710,55 @@ window.onload = (function () {
 
     function animate(name, animationStart) {
         if (name === "fists") {
+            const r = new Vec(15, -15);
+            const l = new Vec(15, 15);
             if (animationStart + useDelay > Date.now()) {
                 const fourthDelay = useDelay * 0.25;
                 const dr = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay) + fourthDelay, 0) * 0.05;
                 const dl = Math.max(-Math.abs((Date.now() - animationStart) - fourthDelay * 3) + fourthDelay, 0) * 0.05;
-                return {
-                    r: new Vec(15 + dr, 15),
-                    l: new Vec(15 + dl, -15),
-                }
-            } else {
-                return {
-                    r: new Vec(15, -15),
-                    l: new Vec(15, 15),
-                }
+                r.x += dr;
+                l.x += dl;
+            }
+            return {
+                r: r,
+                l: l,
+                a: 0,
             }
         } else if (name === "pickaxe") {
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
+            const w = new Vec(20, -30);
+            let a = 0;
             if (animationStart + useDelay > Date.now()) {
-                const a = 0;
-                return {
-                    r: new Vec(15, -15),
-                    l: new Vec(15, 15),
-                    a: a
+                const x = Date.now() - animationStart;
+                if (x <= useDelay * 0.25) {
+                    a = -4 / useDelay * x; // first quarter
+                } else if (x <= useDelay * 0.5) {
+                    a = 8 / useDelay * (x - useDelay * 0.25) - 1; // second quarter
+                } else {
+                    a = -2 / useDelay * (x - useDelay * 0.5) + 1; // second half
                 }
-            } else {
-                return {
-                    r: new Vec(15, -15),
-                    l: new Vec(15, 15),
-                    a: 0,
-                }
+            }
+            return {
+                r: r,
+                l: l,
+                w: w,
+                a: a,
             }
         } else if (name === "sword") {
             if (animationStart + useDelay > Date.now()) {
-
+                return {
+                    r: new Vec(15, -15),
+                    l: new Vec(15, 15),
+                    w: new Vec(15, 15),
+                    a: 0,
+                }
             } else {
                 return {
                     r: new Vec(15, -15),
                     l: new Vec(15, 15),
                     w: new Vec(15, 15),
+                    a: 0,
                 }
             }
         }
