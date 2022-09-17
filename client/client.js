@@ -1,3 +1,4 @@
+console.log(document.querySelector("canvas").getContext("2d"));
 /**
  * TODO: 
  * IMPLEMENT ACTUAL INVENTORY
@@ -9,7 +10,6 @@
  * MAIN MENU
  * ANTI CHEAT 
  */
-
 
 window.onload = (function () {
 
@@ -219,6 +219,29 @@ window.onload = (function () {
         }
     }
 
+    class Item {
+        id; //id in the sprite sheet, can handle damage values among other things
+        type;
+        count;
+        damange;
+        gather;
+        constructor(id, type, count  = 0) {
+            this.id = id;
+            this.type = type;
+            this.count = count;
+            if (type === "sword") {
+                this.damange = (id - 3) * 1.5;
+                this.gather = 0;
+            } else if (type === "pickaxe") {
+                this.damange = 2;
+                this.gather = id + 1;
+            } else {
+                this.damange = 1;
+                this.gather = 1;
+            }
+        }
+    }
+
     const keyPresses = {
         up: false,
         left: false,
@@ -261,7 +284,7 @@ window.onload = (function () {
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
-    const inventory = [null, { name: "sword", id: 8 }, null, null, null];
+    const inventory = [null, new Item(8, "sword"), null, null, null, new Item(5, "pickaxe", 9999)];
 
     //screens: game, chat,
     //future? menu
@@ -430,6 +453,16 @@ window.onload = (function () {
             drawRectangle(left, top, 100, 100, color);
             if (inventory[i] !== null) {
                 renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(left + 15, top + 85, Math.PI * 0.75));
+                const count = inventory[i].count;
+                if (count > 1) {
+                    ctx.font = "bold 32px sans-serif";
+                    ctx.fillStyle = "rgb(255,255,255)";
+            
+                    const textWidth = ctx.measureText(count).width;
+
+                    ctx.lineWidth = 4;
+                    ctx.fillText(count, left + 95 - textWidth, top + 95, 100);
+                }
             }
         }
     }
@@ -454,15 +487,18 @@ window.onload = (function () {
         renderer.drawSprite(spriteManager.get(2));
 
         //DRAW WEAPON
-        const animation = animate(entity.data.heldItem, entity.data.animationStart);
+        const item = entity.data.heldItem;
+        const animation = animate(item, entity.data.animationStart);
         const r = animation.r; // right hand vec
         const l = animation.l; // left hand vec
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
-        if (entity.data.heldItem === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(4).startAt(w.x, w.y).rotate(entity.angle + a));
-        } else if (entity.data.heldItem === "sword") {
-            renderer.drawSprite(spriteManager.get(8).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+        if (item !== null) {
+            if (item.type === "pickaxe") {
+                renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+            } else if (item.type === "sword") {
+                renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+            }
         }
         renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
         renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
@@ -635,7 +671,7 @@ window.onload = (function () {
             selectedSlot = 0;
         }
         if (inventory[selectedSlot] === null) return null;
-        return inventory[selectedSlot].name;
+        return inventory[selectedSlot];
     }
 
     window.addEventListener("keydown", (key) => {
@@ -751,7 +787,7 @@ window.onload = (function () {
                 l: l,
                 a: 0,
             }
-        } else if (name === "pickaxe") { // actions should have a half useDelay difference
+        } else if (name.type === "pickaxe") { // actions should have a half useDelay difference
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
             const w = new Vec(20, -30);
@@ -772,7 +808,7 @@ window.onload = (function () {
                 w: w,
                 a: a,
             }
-        } else if (name === "sword") {
+        } else if (name.type === "sword") {
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
             const w = new Vec(3, 15);
