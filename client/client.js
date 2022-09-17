@@ -1,7 +1,5 @@
-console.log(document.querySelector("canvas").getContext("2d"));
 /**
  * TODO: 
- * IMPLEMENT ACTUAL INVENTORY
  * PLAYER HEALTH BAR (ONLY VISIBLE WHEN UNDER 100% HP)
  * HITBOXES FOR INTERACTIONS - EDITING INVENTORY AND HEALTH BAR
  * BETTER MAP WITH RESOURCE TILES
@@ -121,6 +119,7 @@ window.onload = (function () {
             this.rotation = rotation;
             this.angleHelper = angleHelper
         }
+
         rotate(angleRadians) {
             //CLAMPED BETWEEN 0 AND 2PI
             const changeAngle = this.angleHelper.clamp(angleRadians);
@@ -225,7 +224,7 @@ window.onload = (function () {
         count;
         damange;
         gather;
-        constructor(id, type, count  = 0) {
+        constructor(id, type, count = 0) {
             this.id = id;
             this.type = type;
             this.count = count;
@@ -288,7 +287,7 @@ window.onload = (function () {
 
     //screens: game, chat,
     //future? menu
-    let currentScreen = "game";
+    let screen = "menu";
     let chatInput = "";
 
     createMap();
@@ -301,108 +300,34 @@ window.onload = (function () {
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, 200), 0, { shape: "rectangle", width: 100, height: 100 }));
     }
 
-    function doCollisions() {
-        for (const tile of tiles) {
-            if (AABB(tile)) {
-                resolveCollision(tile);
-            }
-        }
-    }
-
-    function AABB(tile) {
-        // Our AABB hitbox is twice as large as our normal
-        const clientX = client.position.x - playerRadius * 2;
-        const clientY = client.position.y - playerRadius * 2;
-        let tileX = tile.position.x;
-        let tileY = tile.position.y;
-        let tileWidth = tile.data.width;
-        let tileHeight = tile.data.height;
-        if (tile.data.shape === "circle") {
-            tileX -= tile.data.radius;
-            tileY -= tile.data.radius;
-            tileWidth = tile.data.radius * 2;
-            tileHeight = tile.data.radius * 2;
-        }
-        // AABB check
-        if (clientX + playerRadius * 4 >= tileX &&
-            tileX + tileWidth >= clientX &&
-            clientY + playerRadius * 4 >= tileY &&
-            tileY + tileHeight >= clientY
-        ) {
-            if (devMode.AABB) {
-                console.log("AABB");
-            }
-            return true;
-        }
-        return false
-    }
-
-    function resolveCollision(tile) {
-        const clientX = client.position.x;
-        const clientY = client.position.y;
-        const tileX = tile.position.x;
-        const tileY = tile.position.y;
-
-        if (tile.data.shape === "circle") {
-            const distanceBetween = new Vec(clientX - tileX, clientY - tileY);
-            const sumRadius = playerRadius + tile.data.radius;
-
-            if (distanceBetween.lengthSquared() <= sumRadius * sumRadius) { //collision detected
-                const hypo = distanceBetween.length();
-                client.position.x = tileX + distanceBetween.x / hypo * (sumRadius + 1);
-                client.position.y = tileY + distanceBetween.y / hypo * (sumRadius + 1);
-            }
-        } else if (tile.data.shape === "rectangle") {
-            const width = tile.data.width;
-            const height = tile.data.height;
-            const nearestPoint = new Vec(Math.max(tileX, Math.min(tileX + width, clientX)), Math.max(tileY, Math.min(tileY + height, clientY)));
-            const distanceToCircle = new Vec(nearestPoint.x - clientX, nearestPoint.y - clientY);
-
-            //console.log(nearestPoint);
-            //console.log(distanceToCircle);
-            //console.log(distanceToCircle.lengthSquared());
-
-            if (distanceToCircle.lengthSquared() <= playerRadius * playerRadius) {
-                const magnitude = distanceToCircle.length();
-                const unitVector = distanceToCircle.scale(-1 / magnitude);
-                const overlap = Math.abs(playerRadius - magnitude);
-                const displacementVector = unitVector.scale(overlap);
-                //console.log(displacementVector);
-                client.position.x += displacementVector.x || 0;
-                client.position.y += displacementVector.y || 0;
-            }
-        }
-    }
-
     // CLIENT DUTY!!!
-    // send position when server requests it [socket.emit("position", obj)]
-    // render client entity
-    // render server entities received from server [io.emit("entities", obj)]
-    //
-    // eventually handle camera
-
-    //TO IMPLEMENT: 
-    // MORE ROBUST DRAWING IMPLEMENTATION - DONE
-    // SWAP BETWEEN GUN AN FISTS - DONE
-    // CHAT - DONE
-    // CAMERA IMPLEMENTATION - DONE
-
-    // MORE ROBUST ENTITY IMPLEMENTATION - DONE
-    // COLLISIONS - DONE
-
     //IMPLEMENT VARIABLE TIME STEP
-    function clientLoop() {
+    function gameLoop() {
+
         updatePosition();
         doCollisions();
         updateCamera();
         updateMouseAngle();
         fireMouseClicks();
+        renderGame();
 
-        render();
+        if (screen === "game" || screen === "chat") {
+            renderPlayerHud();
+        } else if (screen === "menu") {
+            renderMenuHud();
+        }
     }
-    setInterval(clientLoop, tps);
+    setInterval(gameLoop, tps);
 
-    function render() {
+    function renderMenuHud() {
+        const left = 0.5 * canvas.width - 200;
+        const top = 0.5 * canvas.height - 250;
+        const color = "rgba(0,0,0,0.5)"
+
+        drawRectangle(left, top, 400, 500, color);
+    }
+
+    function renderGame() {
         clearCanvas();
 
         //WILL BE DRAWN RELATIVE TO 0,0 USING THE CONTEXT OF THE CAMERA
@@ -426,28 +351,20 @@ window.onload = (function () {
         drawPlayer(client);
 
         ctx.restore();
-
-        drawHUD();
-
     }
 
     function clearCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-    //////////////////
-    //  RENDERING   //
-    //////////////////
 
     //ADD LAYERING
     //ADD BOW
-    //TODO, make drawPlayer take an entity and draw it as well as it can based on what it has as properties.
 
-    function drawHUD() {
-
+    function renderPlayerHud() {
         for (let i = 0; i < inventory.length; i++) {
             let color = "rgba(0,0,0,0.25)";
             if (i === selectedSlot) color = "rgba(0,0,0,0.5)";
-            const left = 0.5 * (canvas.width - inventory.length * 100) + 100 * i + 10;
+            const left = 0.5 * (canvas.width - inventory.length * 100) + 100 * i;
             const top = canvas.height - 110;
 
             drawRectangle(left, top, 100, 100, color);
@@ -457,7 +374,7 @@ window.onload = (function () {
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
                     ctx.fillStyle = "rgb(255,255,255)";
-            
+
                     const textWidth = ctx.measureText(count).width;
 
                     ctx.lineWidth = 4;
@@ -508,7 +425,7 @@ window.onload = (function () {
 
         //HITBOX
         if (devMode.AABB) {
-            drawRectangle(-40, -40, 80, 80, "red", false);
+            drawRectangle(-40, -40, 80, 80, "red", 2);
         }
         ctx.restore();
     }
@@ -517,7 +434,7 @@ window.onload = (function () {
         if (tile.data.shape === "circle") {
             drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
             if (devMode.AABB) {
-                drawRectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2, "red", false);
+                drawRectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2, "red", 2);
             }
         } else if (tile.data.shape === "rectangle") {
             drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, "red");
@@ -539,15 +456,15 @@ window.onload = (function () {
         }
     }
 
-    function drawRectangle(x, y, width, height, color = "black", fill = true) {
+    function drawRectangle(x, y, width, height, color = "black", lineWidth = -1) {
         ctx.beginPath();
         ctx.fillStyle = color;
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
         ctx.rect(x, y, width, height);
-        if (fill) {
+        if (lineWidth < 0) {
             ctx.fill();
         } else {
+            ctx.lineWidth = lineWidth;
             ctx.stroke();
         }
     }
@@ -661,6 +578,79 @@ window.onload = (function () {
         client.angle = Math.atan2(- mousePos.y + client.position.y - camera.y, mousePos.x - client.position.x + camera.x);
     }
 
+    function doCollisions() {
+        for (const tile of tiles) {
+            if (AABB(tile)) {
+                resolveCollision(tile);
+            }
+        }
+    }
+
+    function AABB(tile) {
+        // Our AABB hitbox is twice as large as our normal
+        const clientX = client.position.x - playerRadius * 2;
+        const clientY = client.position.y - playerRadius * 2;
+        let tileX = tile.position.x;
+        let tileY = tile.position.y;
+        let tileWidth = tile.data.width;
+        let tileHeight = tile.data.height;
+        if (tile.data.shape === "circle") {
+            tileX -= tile.data.radius;
+            tileY -= tile.data.radius;
+            tileWidth = tile.data.radius * 2;
+            tileHeight = tile.data.radius * 2;
+        }
+        // AABB check
+        if (clientX + playerRadius * 4 >= tileX &&
+            tileX + tileWidth >= clientX &&
+            clientY + playerRadius * 4 >= tileY &&
+            tileY + tileHeight >= clientY
+        ) {
+            if (devMode.AABB) {
+                console.log("AABB");
+            }
+            return true;
+        }
+        return false
+    }
+
+    function resolveCollision(tile) {
+        const clientX = client.position.x;
+        const clientY = client.position.y;
+        const tileX = tile.position.x;
+        const tileY = tile.position.y;
+
+        if (tile.data.shape === "circle") {
+            const distanceBetween = new Vec(clientX - tileX, clientY - tileY);
+            const sumRadius = playerRadius + tile.data.radius;
+
+            if (distanceBetween.lengthSquared() <= sumRadius * sumRadius) { //collision detected
+                const hypo = distanceBetween.length();
+                client.position.x = tileX + distanceBetween.x / hypo * (sumRadius + 1);
+                client.position.y = tileY + distanceBetween.y / hypo * (sumRadius + 1);
+            }
+        } else if (tile.data.shape === "rectangle") {
+            const width = tile.data.width;
+            const height = tile.data.height;
+            const nearestPoint = new Vec(Math.max(tileX, Math.min(tileX + width, clientX)), Math.max(tileY, Math.min(tileY + height, clientY)));
+            const distanceToCircle = new Vec(nearestPoint.x - clientX, nearestPoint.y - clientY);
+
+            //console.log(nearestPoint);
+            //console.log(distanceToCircle);
+            //console.log(distanceToCircle.lengthSquared());
+
+            if (distanceToCircle.lengthSquared() <= playerRadius * playerRadius) {
+                const magnitude = distanceToCircle.length();
+                const unitVector = distanceToCircle.scale(-1 / magnitude);
+                const overlap = Math.abs(playerRadius - magnitude);
+                const displacementVector = unitVector.scale(overlap);
+                //console.log(displacementVector);
+                client.position.x += displacementVector.x || 0;
+                client.position.y += displacementVector.y || 0;
+            }
+        }
+    }
+
     function switchItem() { //clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
         client.data.animationStart = 0;
         mouse.mouseDown = false;
@@ -675,7 +665,7 @@ window.onload = (function () {
     }
 
     window.addEventListener("keydown", (key) => {
-        if (currentScreen === "chat") {
+        if (screen === "chat") {
             switch (key.key) {
                 case "Enter": {
                     //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
@@ -683,7 +673,7 @@ window.onload = (function () {
                     const messagePackage = { message: chatInput, time: Date.now() };
                     client.data.messageQueue.push(messagePackage);
                     chatInput = "";
-                    currentScreen = "game";
+                    screen = "game";
                 }
                     break;
                 case "Backspace": {
@@ -697,7 +687,7 @@ window.onload = (function () {
                     break;
                 case "Escape": {
                     chatInput = "";
-                    currentScreen = "game";
+                    screen = "game";
                 }
                     break;
 
@@ -712,7 +702,7 @@ window.onload = (function () {
                     }
                 }
             }
-        } else if (currentScreen === "game") {
+        } else if (screen === "game") {
             switch (key.key) {
                 case "w": keyPresses.up = true;
                     break;
@@ -722,7 +712,7 @@ window.onload = (function () {
                     break;
                 case "d": keyPresses.right = true;
                     break;
-                case "t": currentScreen = "chat";
+                case "t": screen = "chat";
                     break;
                 case "q": {
                     client.data.heldItem = switchItem();
