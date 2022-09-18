@@ -36,6 +36,19 @@ window.onload = (function () {
         }
     }
 
+    class Rectangle {
+        x;
+        y;
+        width;
+        height;
+        constructor(x, y, width, height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
     class GameObject {
         id;
         name;
@@ -241,6 +254,56 @@ window.onload = (function () {
         }
     }
 
+    class ClickableWidget {
+        bounds;
+        clickAction;
+        activeScreen;
+
+        hovering;
+        clicking;
+
+        constructor(bounds, clickAction, activeScreen) {
+            this.bounds = bounds;
+            this.clickAction = clickAction;
+            this.activeScreen = activeScreen;
+            //this.mousePos = new Rectangle(0,0,0,0);
+
+            this.hovering = false;
+            this.clicking = false;
+
+            window.addEventListener("mousedown", e => {
+                if (this.isActive()) {
+                    if (this.hovering) {
+                        this.clicking = true;
+                    }
+                }
+            });
+            window.addEventListener("mouseup", e => {
+                if (this.isActive()) {
+                    if (this.hovering && this.clicking) {
+                        clickAction();
+                    }
+                    this.clicking = false;
+                }
+            });
+            window.addEventListener("mousemove", e => {
+                if (this.isActive()) {
+                    //this.mousePos.x = e.clientX;
+                    //this.mousePos.y = e.clientY;
+                    if (AABB(this.bounds, mousePos)) { // if over the bounds,
+                        this.hovering = true;
+                    } else {
+                        this.hovering = false;
+                    }
+                }
+            });
+        }
+
+        isActive() {
+            return this.activeScreen === screen;
+        }
+    }
+
     const keyPresses = {
         up: false,
         left: false,
@@ -264,6 +327,18 @@ window.onload = (function () {
     spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
 
+    //screens: game, chat,
+    //future? menu
+    let screen = "menu";
+    let chatInput = "";
+
+    const velocity = new Vec(0, 0);
+    const cameraCenter = new Vec(0, 0);
+    const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
+    const mousePos = new Rectangle(0, 0, 0, 0);
+
+    const startButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => { screen = "game" }, "menu");
+
     const tps = 1000 / 60;
     const useDelay = 800;
     const velocityFactor = 1;
@@ -272,23 +347,16 @@ window.onload = (function () {
     //THIS ENTITY
     // playerEntity hitbox will be constant 20 units
     const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: null, animationStart: 0, messageQueue: [] });
+    const playerAABB = new Rectangle(client.position.x - playerRadius * 2, client.position.y - playerRadius * 2, playerRadius * 4, playerRadius * 4);
 
     let serverEntities = [];
     const tiles = [];
-
-    const velocity = new Vec(0, 0);
-    const cameraCenter = new Vec(0, 0);
-    const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
-    const mousePos = new Vec(0, 0);
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
     const inventory = [null, new Item(8, "sword"), null, null, null, new Item(5, "pickaxe", 9999)];
 
-    //screens: game, chat,
-    //future? menu
-    let screen = "menu";
-    let chatInput = "";
+    
 
     createMap();
     function createMap() {
@@ -296,8 +364,15 @@ window.onload = (function () {
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, -100), 0, { shape: "circle", radius: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, 100), 0, { shape: "circle", radius: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, -100), 0, { shape: "circle", radius: 100 }));
-
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, 200), 0, { shape: "rectangle", width: 100, height: 100 }));
+        for (const tile of tiles) {
+            if (tile.data.shape === "circle") {
+                tile.data.AABB = new Rectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2);
+            } else if (tile.data.shape === "rectangle") {
+                tile.data.AABB = new Rectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height);
+            }
+        }
+
     }
 
     // CLIENT DUTY!!!
@@ -320,11 +395,24 @@ window.onload = (function () {
     setInterval(gameLoop, tps);
 
     function renderMenuHud() {
-        const left = 0.5 * canvas.width - 200;
-        const top = 0.5 * canvas.height - 250;
-        const color = "rgba(0,0,0,0.5)"
+        const centerX = 0.5 * canvas.width;
+        const centerY = 0.5 * canvas.height;
+        const color = "rgba(0,0,0,0.5)";
 
-        drawRectangle(left, top, 400, 500, color);
+        startButton.bounds.x = centerX - 100;
+        startButton.bounds.y = centerY - 50;
+        startButton.bounds.width = 200;
+        startButton.bounds.height = 100;
+
+        drawRectangle(0,0,canvas.width,canvas.height,"rgba(255,255,255,0.5)");
+        drawButton(startButton, "#57E86B","#A9F36A","#FEFE69");
+
+        ctx.fillStyle = "black";
+        ctx.fillText("PLAY", centerX - 40, centerY + 12);
+        ctx.font = "bold 32px sans-serif";
+        ctx.fillStyle = "white";
+        ctx.fillText("PLAY", centerX - 42, centerY + 10);
+        
     }
 
     function renderGame() {
@@ -422,7 +510,6 @@ window.onload = (function () {
         renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
         renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
 
-
         //HITBOX
         if (devMode.AABB) {
             drawRectangle(-40, -40, 80, 80, "red", 2);
@@ -506,6 +593,18 @@ window.onload = (function () {
         }
     }
 
+    function drawButton(button, baseColor, hoverColor, clickColor) {
+        let color = "black";
+        if (button.clicking && button.hovering) {
+            color = clickColor;
+        } else if (button.hovering)  {
+            color = hoverColor;
+        } else {
+            color = baseColor;
+        }
+        drawRectangle(button.bounds.x, button.bounds.y, button.bounds.width, button.bounds.height, color);
+    }
+
     // CLIENT HAX --------------------- 
     function updatePosition() {
         //read keys
@@ -579,41 +678,29 @@ window.onload = (function () {
     }
 
     function doCollisions() {
+        playerAABB.x = client.position.x - playerRadius * 2;
+        playerAABB.y = client.position.y - playerRadius * 2;
+
         for (const tile of tiles) {
-            if (AABB(tile)) {
+            if (AABB(tile.data.AABB, playerAABB)) {
                 resolveCollision(tile);
             }
         }
     }
 
-    function AABB(tile) {
-        // Our AABB hitbox is twice as large as our normal
-        const clientX = client.position.x - playerRadius * 2;
-        const clientY = client.position.y - playerRadius * 2;
-        let tileX = tile.position.x;
-        let tileY = tile.position.y;
-        let tileWidth = tile.data.width;
-        let tileHeight = tile.data.height;
-        if (tile.data.shape === "circle") {
-            tileX -= tile.data.radius;
-            tileY -= tile.data.radius;
-            tileWidth = tile.data.radius * 2;
-            tileHeight = tile.data.radius * 2;
-        }
-        // AABB check
-        if (clientX + playerRadius * 4 >= tileX &&
-            tileX + tileWidth >= clientX &&
-            clientY + playerRadius * 4 >= tileY &&
-            tileY + tileHeight >= clientY
+    function AABB(rect1, rect2) {
+        if (rect1.x + rect1.width >= rect2.x &&
+            rect2.x + rect2.width >= rect1.x &&
+            rect1.y + rect1.height >= rect2.y &&
+            rect2.y + rect2.height >= rect1.y
         ) {
             if (devMode.AABB) {
                 console.log("AABB");
             }
             return true;
         }
-        return false
+        return false;
     }
-
     function resolveCollision(tile) {
         const clientX = client.position.x;
         const clientY = client.position.y;
@@ -846,7 +933,6 @@ window.onload = (function () {
     window.addEventListener("mousemove", (mouse) => {
         mousePos.x = mouse.clientX;
         mousePos.y = mouse.clientY;
-
     });
 
     window.addEventListener("mousedown", (event) => {
