@@ -49,6 +49,17 @@ window.onload = (function () {
         }
     }
 
+    class Circle {
+        x;
+        y;
+        radius;
+        constructor(x, y, radius) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+        }
+    }
+
     class GameObject {
         id;
         name;
@@ -83,10 +94,10 @@ window.onload = (function () {
             }
         }
         sin(angleRadians) { //MUST BE CLAMPED BEFORE USING
-            return this.sinTable[this.subDivision(angleRadians)];
+            return this.sinTable[this.subDivision(this.clamp(angleRadians))];
         }
         cos(angleRadians) {
-            return this.cosTable[this.subDivision(angleRadians)];
+            return this.cosTable[this.subDivision(this.clamp(angleRadians))];
         }
         //converts a radian angle to the closest (floor) subdivision of a full revolution around th circle
         subDivision(angleRadians) {
@@ -235,22 +246,26 @@ window.onload = (function () {
         id; //id in the sprite sheet, can handle damage values among other things
         type;
         count;
-        damange;
+        damage;
         gather;
         constructor(id, type, count = 0) {
             this.id = id;
             this.type = type;
             this.count = count;
             if (type === "sword") {
-                this.damange = (id - 3) * 1.5;
+                this.damage = (id - 8) * 4 + 10; // 10 damage + 4 per level
                 this.gather = 0;
-            } else if (type === "pickaxe") {
-                this.damange = 2;
+            } else if (type === "pickaxe") { // 5 damage  
+                this.damage = 5;
                 this.gather = id + 1;
-            } else {
-                this.damange = 1;
+            } else { // 3 damage
+                this.damage = 3;
                 this.gather = 1;
             }
+        }
+
+        static empty() {
+            return new Item(-1, "fists");
         }
     }
 
@@ -266,7 +281,6 @@ window.onload = (function () {
             this.bounds = bounds;
             this.clickAction = clickAction;
             this.activeScreen = activeScreen;
-            //this.mousePos = new Rectangle(0,0,0,0);
 
             this.hovering = false;
             this.clicking = false;
@@ -288,9 +302,7 @@ window.onload = (function () {
             });
             window.addEventListener("mousemove", e => {
                 if (this.isActive()) {
-                    //this.mousePos.x = e.clientX;
-                    //this.mousePos.y = e.clientY;
-                    if (AABB(this.bounds, mousePos)) { // if over the bounds,
+                    if (rectIntersect(this.bounds, mousePos)) { // if over the bounds,
                         this.hovering = true;
                     } else {
                         this.hovering = false;
@@ -318,7 +330,7 @@ window.onload = (function () {
         clickCreation: 0,
     }
 
-    const socket = io();
+    const server = io();
     const devMode = { ray: false, movementent: false, AABB: false };
 
     const canvas = document.querySelector("#canvas");
@@ -326,9 +338,9 @@ window.onload = (function () {
     const spriteManager = new SpriteManager();
     spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
     const renderer = new Renderer(ctx, spriteManager.spriteSheet);
+    const mathHelper = new AngleHelper(65536);
 
-    //screens: game, chat,
-    //future? menu
+    //screens: game, chat, menu
     let screen = "menu";
     let chatInput = "";
 
@@ -337,34 +349,47 @@ window.onload = (function () {
     const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
     const mousePos = new Rectangle(0, 0, 0, 0);
 
-    const startButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => { screen = "game" }, "menu");
-
     const tps = 1000 / 60;
     const useDelay = 800;
     const velocityFactor = 1;
     const playerRadius = 20;
+    const boundingBoxFactor = 5; // box factor
 
     //THIS ENTITY
-    // playerEntity hitbox will be constant 20 units
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: null, animationStart: 0, messageQueue: [] });
-    const playerAABB = new Rectangle(client.position.x - playerRadius * 2, client.position.y - playerRadius * 2, playerRadius * 4, playerRadius * 4);
+    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), animationStart: 0, messageQueue: [], health: 100 });
+    const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
+    let isAlive = false;
 
     let serverEntities = [];
     const tiles = [];
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
-    const inventory = [null, new Item(8, "sword"), null, null, null, new Item(5, "pickaxe", 9999)];
+    const inventory = [Item.empty(), new Item(8, "sword"), Item.empty(), Item.empty(), Item.empty(), new Item(5, "pickaxe", 9999)];
 
-    
+    const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
+        screen = "game"; 
+        isAlive = true;
+        client.position = new Vec(0,0); //randomize?
+        client.angle = 0;
+        client.data.heldItem = Item.empty();
+        client.data.animationStart = 0;
+        client.data.messageQueue = [];
+        client.data.health = 100;
+
+        server.emit("join", );
+    }, "menu");
 
     createMap();
     function createMap() {
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, -100), 0, { shape: "circle", radius: 100 }));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, 100), 0, { shape: "circle", radius: 100 }));
+        tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 100 }));
+        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, -100), 0, { shape: "circle", radius: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, 200), 0, { shape: "rectangle", width: 100, height: 100 }));
+        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
+        tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
+
         for (const tile of tiles) {
             if (tile.data.shape === "circle") {
                 tile.data.AABB = new Rectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2);
@@ -372,7 +397,6 @@ window.onload = (function () {
                 tile.data.AABB = new Rectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height);
             }
         }
-
     }
 
     // CLIENT DUTY!!!
@@ -397,22 +421,21 @@ window.onload = (function () {
     function renderMenuHud() {
         const centerX = 0.5 * canvas.width;
         const centerY = 0.5 * canvas.height;
-        const color = "rgba(0,0,0,0.5)";
 
-        startButton.bounds.x = centerX - 100;
-        startButton.bounds.y = centerY - 50;
-        startButton.bounds.width = 200;
-        startButton.bounds.height = 100;
+        playButton.bounds.x = centerX - 100;
+        playButton.bounds.y = centerY - 50;
+        playButton.bounds.width = 200;
+        playButton.bounds.height = 100;
 
-        drawRectangle(0,0,canvas.width,canvas.height,"rgba(255,255,255,0.5)");
-        drawButton(startButton, "#57E86B","#A9F36A","#FEFE69");
+        drawRectangle(0, 0, canvas.width, canvas.height, "rgba(255,255,255,0.5)");
+        drawButton(playButton, "#57E86B", "#A9F36A", "#FEFE69");
 
         ctx.fillStyle = "black";
         ctx.fillText("PLAY", centerX - 40, centerY + 12);
         ctx.font = "bold 32px sans-serif";
         ctx.fillStyle = "white";
         ctx.fillText("PLAY", centerX - 42, centerY + 10);
-        
+
     }
 
     function renderGame() {
@@ -435,8 +458,11 @@ window.onload = (function () {
 
                 }
             }
+
         }
-        drawPlayer(client);
+        if (isAlive) {
+            drawPlayer(client);
+        }
 
         ctx.restore();
     }
@@ -449,15 +475,18 @@ window.onload = (function () {
     //ADD BOW
 
     function renderPlayerHud() {
+        const centerX = canvas.width * 0.5;
+
+        // inventory
         for (let i = 0; i < inventory.length; i++) {
             let color = "rgba(0,0,0,0.25)";
             if (i === selectedSlot) color = "rgba(0,0,0,0.5)";
-            const left = 0.5 * (canvas.width - inventory.length * 100) + 100 * i;
-            const top = canvas.height - 110;
+            const slotLeft = centerX - inventory.length * 50 + i * 100;
+            const slotTop = canvas.height - 110;
 
-            drawRectangle(left, top, 100, 100, color);
+            drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(left + 15, top + 85, Math.PI * 0.75));
+                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -466,10 +495,14 @@ window.onload = (function () {
                     const textWidth = ctx.measureText(count).width;
 
                     ctx.lineWidth = 4;
-                    ctx.fillText(count, left + 95 - textWidth, top + 95, 100);
+                    ctx.fillText(count, slotLeft + 95 - textWidth, slotTop + 95, 100);
                 }
             }
         }
+        // health bar
+        drawRectangle(centerX - 105, canvas.height - 145, 210, 30, "rgba(0,0,0,0.25)");
+        drawRectangle(centerX - 100, canvas.height - 140, client.data.health * 2, 20, "red");
+
     }
 
     function drawPlayer(entity) {
@@ -492,18 +525,16 @@ window.onload = (function () {
         renderer.drawSprite(spriteManager.get(2));
 
         //DRAW WEAPON
-        const item = entity.data.heldItem;
-        const animation = animate(item, entity.data.animationStart);
+        let item = entity.data.heldItem;
+        const animation = animate(item.type, entity.data.animationStart);
         const r = animation.r; // right hand vec
         const l = animation.l; // left hand vec
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
-        if (item !== null) {
-            if (item.type === "pickaxe") {
-                renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
-            } else if (item.type === "sword") {
-                renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
-            }
+        if (item.type === "pickaxe") {
+            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+        } else if (item.type === "sword") {
+            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
         }
         renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
         renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
@@ -512,7 +543,7 @@ window.onload = (function () {
 
         //HITBOX
         if (devMode.AABB) {
-            drawRectangle(-40, -40, 80, 80, "red", 2);
+            drawRectangle(clientAABB.width * -0.5, clientAABB.height * -0.5, clientAABB.width, clientAABB.height, "red", 2);
         }
         ctx.restore();
     }
@@ -597,7 +628,7 @@ window.onload = (function () {
         let color = "black";
         if (button.clicking && button.hovering) {
             color = clickColor;
-        } else if (button.hovering)  {
+        } else if (button.hovering) {
             color = hoverColor;
         } else {
             color = baseColor;
@@ -625,6 +656,9 @@ window.onload = (function () {
             //update pos
             client.position.x += velocity.x;
             client.position.y += velocity.y;
+            clientAABB.x = client.position.x - playerRadius * boundingBoxFactor;
+            clientAABB.y = client.position.y - playerRadius * boundingBoxFactor;
+
 
             //drag
             velocity.x *= 0.75;
@@ -678,29 +712,35 @@ window.onload = (function () {
     }
 
     function doCollisions() {
-        playerAABB.x = client.position.x - playerRadius * 2;
-        playerAABB.y = client.position.y - playerRadius * 2;
-
         for (const tile of tiles) {
-            if (AABB(tile.data.AABB, playerAABB)) {
+            if (rectIntersect(tile.data.AABB, clientAABB)) {
                 resolveCollision(tile);
             }
         }
     }
 
-    function AABB(rect1, rect2) {
+    function rectIntersect(rect1, rect2) {
+        //console.log(rect1);
+        //console.log(rect2);
         if (rect1.x + rect1.width >= rect2.x &&
             rect2.x + rect2.width >= rect1.x &&
             rect1.y + rect1.height >= rect2.y &&
             rect2.y + rect2.height >= rect1.y
         ) {
             if (devMode.AABB) {
-                console.log("AABB");
+                //vconsole.log("AABB");
             }
             return true;
         }
         return false;
     }
+
+    function circleIntersect(circle1, circle2) {
+        const distanceBetween = new Vec(circle1.x - circle2.x, circle1.y - circle2.y);
+        const sumRadius = circle1.radius + circle2.radius;
+        return distanceBetween.lengthSquared() <= sumRadius * sumRadius;
+    }
+
     function resolveCollision(tile) {
         const clientX = client.position.x;
         const clientY = client.position.y;
@@ -738,17 +778,143 @@ window.onload = (function () {
         }
     }
 
-    function switchItem() { //clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
+    function nextSlot() { 
+        setSlot(selectedSlot + 1);
+    }
+
+    function setSlot(index) { // Clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
         client.data.animationStart = 0;
         mouse.mouseDown = false;
-        //mouse.clickCount = 0;
 
-        selectedSlot++; //currently just goes to the next hotbar slot
-        if (selectedSlot == inventory.length) {
+        if (index >= 0 && index < inventory.length) {
+            selectedSlot = index
+        } else {
             selectedSlot = 0;
         }
-        if (inventory[selectedSlot] === null) return null;
+        client.data.heldItem = inventory[selectedSlot];
         return inventory[selectedSlot];
+    }
+
+    function error(type, data) {
+        if (type === "param") {
+            throw new Error(`Parameter '${data}' is a required parameter for this function!`);
+        } else {
+            throw new Error();
+        }
+    }
+
+    function fireMouseClicks() { //called every client tick
+        if (mouse.mouseDown || mouse.clickCount == 1) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
+            const time = Date.now();
+            if (mouse.clickCreation + useDelay < time) { // fires an input
+                mouse.clickCreation = time;
+                mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
+                client.data.animationStart = Date.now();
+                attack(); //does interactions
+
+                //console.log("INPUT");
+            }
+        }
+    }
+
+    function animate(name, animationStart) {
+        if (name === "fists") {
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
+            if (animationStart + useDelay > Date.now()) {
+                const x = Date.now() - animationStart;
+                const fourthDelay = useDelay * 0.25;
+                const dr = Math.max(-Math.abs(x - fourthDelay) + fourthDelay, 0) * 0.05;
+                const dl = Math.max(-Math.abs(x - fourthDelay * 3) + fourthDelay, 0) * 0.05;
+                r.x += dr;
+                l.x += dl;
+            }
+            return {
+                r: r,
+                l: l,
+                a: 0,
+            }
+        } else if (name === "pickaxe") { // actions should have a half useDelay difference
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
+            const w = new Vec(20, -30);
+            let a = 0;
+            if (animationStart + useDelay > Date.now()) {
+                const x = Date.now() - animationStart;
+                if (x <= useDelay * 0.25) {
+                    a = -4 / useDelay * x; // first quarter
+                } else if (x <= useDelay * 0.5) {
+                    a = 8 / useDelay * (x - useDelay * 0.25) - 1; // second quarter
+                } else {
+                    a = -2 / useDelay * (x - useDelay * 0.5) + 1; // second half
+                }
+            }
+            return {
+                r: r,
+                l: l,
+                w: w,
+                a: a,
+            }
+        } else if (name === "sword") {
+            const r = new Vec(15, 15);
+            const l = new Vec(15, -15);
+            const w = new Vec(3, 15);
+            let a = 0;
+            if (animationStart + useDelay > Date.now()) {
+                const x = Date.now() - animationStart;
+                if (x <= useDelay * 0.25) {
+                    w.x = 3 + -10 / useDelay * x; // first quarter
+                    r.x = w.x + 12;
+                    a = -2 / useDelay * x;
+                } else if (x <= useDelay * 0.5) {
+                    w.x = 3 + 40 / useDelay * (x - useDelay * 0.25) - 2.5; // second quarter
+                    r.x = w.x + 12;
+                    a = 4 / useDelay * (x - useDelay * 0.25) - 0.5;
+                } else {
+                    w.x = 3 + -15 / useDelay * (x - useDelay * 0.5) + 7.5; // second half
+                    r.x = w.x + 12;
+                    a = -1 / useDelay * (x - useDelay * 0.5) + 0.5;
+                }
+            }
+            return {
+                r: r,
+                l: l,
+                w: w,
+                a: a,
+            }
+        }
+    }
+
+    function attack() {
+        const interactionPacket = {
+            type: "damage",
+            value: client.data.heldItem.damage,
+        }
+        const attackCircle = new Circle(client.position.x, client.position.y, playerRadius);
+        if (client.data.heldItem.type === "sword" || client.data.heldItem.type === "pickaxe") {
+            attackCircle.radius = playerRadius * 2;
+            attackCircle.x += mathHelper.cos(client.angle) * playerRadius * 3;
+            attackCircle.y -= mathHelper.sin(client.angle) * playerRadius * 3;
+        } else {
+            attackCircle.x += mathHelper.cos(client.angle) * playerRadius;
+            attackCircle.y -= mathHelper.sin(client.angle) * playerRadius;
+        }
+        for (const entity of serverEntities) {
+            if (entity.id !== client.id && circleIntersect(attackCircle, new Circle(entity.position.x, entity.position.y, playerRadius))) {
+                //console.log("Interaction with " + entity.id);
+                server.emit("interact", { receiver: entity.id, data: interactionPacket });
+            }
+        }
+        //check collision between player interaction hitbox and all entities which can be interacted with?
+    }
+
+    function handleDamage(damageValue) {
+        client.data.health -= damageValue;
+        if (client.data.health <= 0) {
+            screen = "menu";
+            server.emit("exit", );
+            isAlive = false;
+        }
     }
 
     window.addEventListener("keydown", (key) => {
@@ -756,7 +922,6 @@ window.onload = (function () {
             switch (key.key) {
                 case "Enter": {
                     //TODO, MAKE GETPLAYER HANDLE THIS maybe making the server do this makes more sense tho
-                    //socket.emit("chat", messagePackage);
                     const messagePackage = { message: chatInput, time: Date.now() };
                     client.data.messageQueue.push(messagePackage);
                     chatInput = "";
@@ -802,7 +967,7 @@ window.onload = (function () {
                 case "t": screen = "chat";
                     break;
                 case "q": {
-                    client.data.heldItem = switchItem();
+                    nextSlot();
                 }
                     break;
             }
@@ -824,102 +989,6 @@ window.onload = (function () {
         }
     });
 
-    function error(type, data) {
-        if (type === "param") {
-            throw new Error(`Parameter '${data}' is a required parameter for this function!`);
-        } else {
-            throw new Error();
-        }
-    }
-
-    function fireMouseClicks() { //called every client tick
-        if (mouse.mouseDown || mouse.clickCount == 1) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
-            const time = Date.now();
-            if (mouse.clickCreation + useDelay < time) { // fires an input
-                mouse.clickCreation = time;
-                mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
-
-
-                interact(); //does interactions
-
-                //console.log("INPUT");
-            }
-        }
-    }
-
-    function animate(name, animationStart) {
-        if (name === null) {
-            const r = new Vec(15, 15);
-            const l = new Vec(15, -15);
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
-                const fourthDelay = useDelay * 0.25;
-                const dr = Math.max(-Math.abs(x - fourthDelay) + fourthDelay, 0) * 0.05;
-                const dl = Math.max(-Math.abs(x - fourthDelay * 3) + fourthDelay, 0) * 0.05;
-                r.x += dr;
-                l.x += dl;
-            }
-            return {
-                r: r,
-                l: l,
-                a: 0,
-            }
-        } else if (name.type === "pickaxe") { // actions should have a half useDelay difference
-            const r = new Vec(15, 15);
-            const l = new Vec(15, -15);
-            const w = new Vec(20, -30);
-            let a = 0;
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
-                if (x <= useDelay * 0.25) {
-                    a = -4 / useDelay * x; // first quarter
-                } else if (x <= useDelay * 0.5) {
-                    a = 8 / useDelay * (x - useDelay * 0.25) - 1; // second quarter
-                } else {
-                    a = -2 / useDelay * (x - useDelay * 0.5) + 1; // second half
-                }
-            }
-            return {
-                r: r,
-                l: l,
-                w: w,
-                a: a,
-            }
-        } else if (name.type === "sword") {
-            const r = new Vec(15, 15);
-            const l = new Vec(15, -15);
-            const w = new Vec(3, 15);
-            let a = 0;
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
-                if (x <= useDelay * 0.25) {
-                    w.x = 3 + -10 / useDelay * x; // first quarter
-                    r.x = w.x + 12;
-                    a = -2 / useDelay * x;
-                } else if (x <= useDelay * 0.5) {
-                    w.x = 3 + 40 / useDelay * (x - useDelay * 0.25) - 2.5; // second quarter
-                    r.x = w.x + 12;
-                    a = 4 / useDelay * (x - useDelay * 0.25) - 0.5;
-                } else {
-                    w.x = 3 + -15 / useDelay * (x - useDelay * 0.5) + 7.5; // second half
-                    r.x = w.x + 12;
-                    a = -1 / useDelay * (x - useDelay * 0.5) + 0.5;
-                }
-            }
-            return {
-                r: r,
-                l: l,
-                w: w,
-                a: a,
-            }
-        }
-    }
-
-    function interact() {
-        client.data.animationStart = Date.now();
-        //check collision between player interaction hitbox and all entities which can be interacted with?
-    }
-
     window.addEventListener("load", (event) => {
         canvas.height = window.innerHeight;
         canvas.width = window.innerWidth;
@@ -936,26 +1005,36 @@ window.onload = (function () {
     });
 
     window.addEventListener("mousedown", (event) => {
-        mouse.mouseDown = true;
-        mouse.clickCount++;
+        if (isAlive) {
+            mouse.mouseDown = true;
+            mouse.clickCount++;
+        }
     });
 
     window.addEventListener("mouseup", (event) => {
         mouse.mouseDown = false;
     });
 
-    socket.on("init", (id) => {
-        client.id = id;
-        console.log(`Joined with id: ${client.id}`);
-        socket.emit("init", client);
+    server.on("init", (init) => {
+        client.id = init.id;
+        console.log(`Joined with ID: \x1b[33m${client.id}\x1b[0m`);
+        server.emit("init", client);
+        if (isAlive) {
+            server.emit("join", );
+        }
     });
 
-    socket.on("getclientdata", () => {
-        socket.emit("getclientdata", client);
+    server.on("getclientdata", () => {
+        server.emit("getclientdata", client);
     });
 
-    socket.on("sendserverdata", (entitites) => {
+    server.on("sendserverdata", (entitites) => {
         serverEntities = entitites;
     });
 
+    server.on("interact", (data) => {
+        if (data.type === "damage") {
+            handleDamage(data.value);
+        }
+    });
 })();

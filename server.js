@@ -12,11 +12,10 @@ const io = socketio(server);
 //const Client = require("./client/client");
 
 // Set static folder.
-app.use(express.static(path.join(__dirname,"/client")));
+app.use(express.static(path.join(__dirname, "/client")));
 
 // Holds all entities
 const entities = [];
-let nextId = 0;
 
 // Start server
 server.listen(PORT, () => {
@@ -27,48 +26,75 @@ server.listen(PORT, () => {
         removeExpiredMessages();
 
         // Requests all clients to send position to the server
-        io.emit("getclientdata", );
+        io.emit("getclientdata",);
 
         // Emits all entity states to the client
         io.emit("sendserverdata", entities);
+
+        //console.log(entities);
 
     }
     setInterval(tick, tps);
 });
 
+//OPTIONS:
+// set thisEntity to null if the client disconnects. 
+// pros: ID === index
+// cons: in client must loop through many null indexes of serverEntities;
+// 
+// splice thisEntity on client disconenct.
+// pros: all entities passed to the client are valid
+// cons: must do a search for the entity on disconnect and on client to client message;
+//
+// give each client an index in 
+
+
 // Handle a socket connection request from web client
-io.on("connection", (socket) => {
+io.on("connection", (client) => {
+
     // Creating the entity
     const thisEntity = {};
 
     // Setting the id for the entity
-    const id = nextId;
-    nextId++;
+    const id = client.id;
 
     // First ping to the client (can adde extra attributes later if needed!)
-    socket.emit("init", id);
+    client.emit("init", { id: id });
+    client.on("init", client => {
+        console.log(`Client connected with ID: \x1b[33m${client.id}\x1b[0m`);
+    });
 
-    socket.on("init", client => {
-        Object.assign(thisEntity, client);
-        console.log(`Client connected with ID ${id}`);
+    client.on("join", () => {
         entities.push(thisEntity);
     });
 
-    // On client disconnect
-    socket.on("disconnect", () => {
-        console.log(`Client ${thisEntity.id} disconnected!`);
-
+    client.on("exit", () => {
         const index = entities.indexOf(thisEntity);
-        entities.splice(index,1);
+        if (index >= 0) {
+            entities.splice(index, 1);  
+        }
+    });
+
+    // On client disconnect
+    client.on("disconnect", () => {
+        console.log(`Client disconnected with ID: \x1b[33m${thisEntity.id}\x1b[0m`);
+        const index = entities.indexOf(thisEntity);
+        if (index >= 0) {
+            entities.splice(index, 1);
+        };
     });
 
     // On client emit position to server
-    socket.on("getclientdata", client => {
+    client.on("getclientdata", client => {
         Object.assign(thisEntity, client);
+    });
+
+    client.on("interact", packet => {
+        io.to(packet.receiver).emit("interact", packet.data);
     });
 });
 
-//FROM const entities, will remove messages with a timestamp over some number
+// FROM const entities, will remove messages with a timestamp over some number
 // on client side, we can prevent the rendering of messages sooner be
 function removeExpiredMessages() {
 
@@ -89,13 +115,13 @@ function removeExpiredMessages() {
                     rejectUnauthorized: false
                 }
             });
-        } 
+        }
     })();
 
     const database = getDatabase;
-    
+
     database.connect();
-    
+
     database.query('SELECT * FROM users', (err, res) => {
         if (err) throw err;
         database.end();
@@ -117,7 +143,7 @@ function createUser(username, password, callback) {
                     rejectUnauthorized: false
                 }
             });
-        } 
+        }
     })();
 
     const database = getDatabase;
@@ -126,7 +152,7 @@ function createUser(username, password, callback) {
 
     database.query(`INSERT into users (username, password) values ('${username}','${password}');`, (err, res) => {
         let validUser = true;
-        if (err) validUser = false;    
+        if (err) validUser = false;
         database.end();
         return callback(validUser);
     });
