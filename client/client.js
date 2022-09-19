@@ -6,6 +6,7 @@
  * BETTER MAP WITH RESOURCE TILES
  * CRAFTING SYSTEM TO MAKE BETTER ITEMS BASED ON INVENTORY
  * PLAYER COLOR SELECTION
+ * PLAYER INTERPOLATION (DOWN TO 20 SERVER TICKS PER SECOND TO SAVE RAM)
  */
 
 window.onload = (function () {
@@ -353,7 +354,8 @@ window.onload = (function () {
     const framesPerSecond = 60
     const msPerFrame = 1000 / framesPerSecond;
     const useDelay = 800;
-    let animationStart = 0;
+    let attackStart = 0;
+    let attackQueued = false;
 
     const velocityFactor = 1;
     const playerRadius = 20;
@@ -377,7 +379,7 @@ window.onload = (function () {
         client.position = new Vec(0,0); //randomize?
         client.angle = 0;
         client.data.heldItem = Item.empty();
-        client.data.animationFrame = -1;
+        client.data.animationFrame = undefined;
         client.data.messageQueue = [];
         client.data.health = 100;
 
@@ -407,12 +409,12 @@ window.onload = (function () {
     //IMPLEMENT VARIABLE TIME STEP
     function gameLoop() {
 
-        updateAnimation();
         updatePosition();
         doCollisions();
         updateCamera();
         updateMouseAngle();
         fireMouseClicks();
+        updateAttack();
         renderGame();
 
         if (screen === "game" || screen === "chat") {
@@ -814,17 +816,20 @@ window.onload = (function () {
             if (mouse.clickCreation + useDelay < time) { // fires an input
                 mouse.clickCreation = time;
                 mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
-                animationStart = Date.now();
+                attackStart = Date.now();
+                attackQueued = true;
                 client.data.animationFrame = 0;
-                attack(); //does interactions
-
                 //console.log("INPUT");
             }
         }
     }
 
-    function updateAnimation() {
-        client.data.animationFrame = Date.now() - animationStart;
+    function updateAttack() {
+        client.data.animationFrame = Date.now() - attackStart;
+        if (attackQueued && Date.now() - attackStart > useDelay * 0.5) {
+            attack(); // does interactions
+            attackQueued = false;
+        }
     }
 
     function animate(name, animationFrame) {
