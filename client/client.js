@@ -1,12 +1,11 @@
 /**
  * TODO: 
- * PLAYER HEALTH BAR (ONLY VISIBLE WHEN UNDER 100% HP)
- * HITBOXES FOR INTERACTIONS - EDITING INVENTORY AND HEALTH BAR
+ * RENDER PLAYER HEALTHBAR ON PLAYER SPRITE?
+ * 0.5 SECOND ATTACK DELAY
+ * RED OVER PLAYER IN INVINSIBILITY FRAME
  * BETTER MAP WITH RESOURCE TILES
  * CRAFTING SYSTEM TO MAKE BETTER ITEMS BASED ON INVENTORY
  * PLAYER COLOR SELECTION
- * MAIN MENU
- * ANTI CHEAT 
  */
 
 window.onload = (function () {
@@ -335,9 +334,11 @@ window.onload = (function () {
 
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
-    const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
-    const renderer = new Renderer(ctx, spriteManager.spriteSheet);
+    const playerSprites = new SpriteManager();
+    playerSprites.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
+    const tileSprites = new SpriteManager();
+    tileSprites.loadImage("/sprites2.png", 1, 4, 256, 256, 1);
+    const renderer = new Renderer(ctx, playerSprites.spriteSheet);
     const mathHelper = new AngleHelper(65536);
 
     //screens: game, chat, menu
@@ -349,14 +350,17 @@ window.onload = (function () {
     const camera = new Vec(-canvas.width * 0.5, -canvas.height * 0.5);
     const mousePos = new Rectangle(0, 0, 0, 0);
 
-    const tps = 1000 / 60;
+    const framesPerSecond = 60
+    const msPerFrame = 1000 / framesPerSecond;
     const useDelay = 800;
+    let animationStart = 0;
+
     const velocityFactor = 1;
     const playerRadius = 20;
     const boundingBoxFactor = 5; // box factor
 
     //THIS ENTITY
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), animationStart: 0, messageQueue: [], health: 100 });
+    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), animationFrame: undefined, messageQueue: [], health: 100 });
     const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
     let isAlive = false;
 
@@ -373,7 +377,7 @@ window.onload = (function () {
         client.position = new Vec(0,0); //randomize?
         client.angle = 0;
         client.data.heldItem = Item.empty();
-        client.data.animationStart = 0;
+        client.data.animationFrame = -1;
         client.data.messageQueue = [];
         client.data.health = 100;
 
@@ -403,6 +407,7 @@ window.onload = (function () {
     //IMPLEMENT VARIABLE TIME STEP
     function gameLoop() {
 
+        updateAnimation();
         updatePosition();
         doCollisions();
         updateCamera();
@@ -416,7 +421,7 @@ window.onload = (function () {
             renderMenuHud();
         }
     }
-    setInterval(gameLoop, tps);
+    setInterval(gameLoop, msPerFrame);
 
     function renderMenuHud() {
         const centerX = 0.5 * canvas.width;
@@ -486,7 +491,7 @@ window.onload = (function () {
 
             drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
+                renderer.drawSprite(playerSprites.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -521,25 +526,25 @@ window.onload = (function () {
         drawChatBubble(entity.data.messageQueue, color);
 
         //DRAW PLAYER BODY
-        renderer.drawSprite(spriteManager.get(0));
-        renderer.drawSprite(spriteManager.get(2));
+        renderer.drawSprite(playerSprites.get(0));
+        renderer.drawSprite(playerSprites.get(2));
 
         //DRAW WEAPON
         let item = entity.data.heldItem;
-        const animation = animate(item.type, entity.data.animationStart);
+        const animation = animate(item.type, entity.data.animationFrame);
         const r = animation.r; // right hand vec
         const l = animation.l; // left hand vec
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+            renderer.drawSprite(playerSprites.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
         } else if (item.type === "sword") {
-            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+            renderer.drawSprite(playerSprites.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
         }
-        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
+        renderer.drawSprite(playerSprites.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(playerSprites.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(playerSprites.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
+        renderer.drawSprite(playerSprites.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
 
         //HITBOX
         if (devMode.AABB) {
@@ -783,7 +788,7 @@ window.onload = (function () {
     }
 
     function setSlot(index) { // Clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
-        client.data.animationStart = 0;
+        client.data.animation = -1;
         mouse.mouseDown = false;
 
         if (index >= 0 && index < inventory.length) {
@@ -809,7 +814,8 @@ window.onload = (function () {
             if (mouse.clickCreation + useDelay < time) { // fires an input
                 mouse.clickCreation = time;
                 mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
-                client.data.animationStart = Date.now();
+                animationStart = Date.now();
+                client.data.animationFrame = 0;
                 attack(); //does interactions
 
                 //console.log("INPUT");
@@ -817,12 +823,16 @@ window.onload = (function () {
         }
     }
 
-    function animate(name, animationStart) {
+    function updateAnimation() {
+        client.data.animationFrame = Date.now() - animationStart;
+    }
+
+    function animate(name, animationFrame) {
         if (name === "fists") {
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
+            if (animationFrame >= 0 && animationFrame <= useDelay) {
+                const x = animationFrame;
                 const fourthDelay = useDelay * 0.25;
                 const dr = Math.max(-Math.abs(x - fourthDelay) + fourthDelay, 0) * 0.05;
                 const dl = Math.max(-Math.abs(x - fourthDelay * 3) + fourthDelay, 0) * 0.05;
@@ -839,8 +849,8 @@ window.onload = (function () {
             const l = new Vec(15, -15);
             const w = new Vec(20, -30);
             let a = 0;
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
+            if (animationFrame >= 0 && animationFrame <= useDelay) {
+                const x = animationFrame;
                 if (x <= useDelay * 0.25) {
                     a = -4 / useDelay * x; // first quarter
                 } else if (x <= useDelay * 0.5) {
@@ -860,8 +870,8 @@ window.onload = (function () {
             const l = new Vec(15, -15);
             const w = new Vec(3, 15);
             let a = 0;
-            if (animationStart + useDelay > Date.now()) {
-                const x = Date.now() - animationStart;
+            if (animationFrame >= 0 && animationFrame <= useDelay) {
+                const x = animationFrame;
                 if (x <= useDelay * 0.25) {
                     w.x = 3 + -10 / useDelay * x; // first quarter
                     r.x = w.x + 12;
