@@ -1,0 +1,16 @@
+0 player base
+1 player hand
+2 player base outline
+3 player hand outline
+4 wood pickaxe
+5 stone pickaxe
+6 iron pickaxe
+7 diamond pickaxe
+8 wood sword
+9 stone sword
+10 iron sword
+11 diamond sword
+12 tree resource
+13 stone resource
+14 iron resource
+15 diamond resource

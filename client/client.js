@@ -331,15 +331,16 @@ window.onload = (function () {
     }
 
     const server = io();
-    const devMode = { ray: false, movementent: false, AABB: false };
+    const devMode = { ray: false, movementent: false, AABB: false, hitboxes: false };
 
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
-    const playerSprites = new SpriteManager();
-    playerSprites.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
-    const tileSprites = new SpriteManager();
-    tileSprites.loadImage("/sprites2.png", 1, 4, 256, 256, 1);
-    const renderer = new Renderer(ctx, playerSprites.spriteSheet);
+    ctx.imageSmoothingEnabled = false
+    const spriteManager = new SpriteManager();
+    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
+    spriteManager.loadImage("/sprites2.png", 1, 4, 256, 256, 2);
+
+    const renderer = new Renderer(ctx, spriteManager.spriteSheet);
     const mathHelper = new AngleHelper(65536);
 
     //screens: game, chat, menu
@@ -374,25 +375,26 @@ window.onload = (function () {
     const inventory = [Item.empty(), new Item(8, "sword"), Item.empty(), Item.empty(), Item.empty(), new Item(5, "pickaxe", 9999)];
 
     const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
-        screen = "game"; 
+        screen = "game";
         isAlive = true;
-        client.position = new Vec(0,0); //randomize?
+        client.position = new Vec(0, 0); //randomize?
         client.angle = 0;
         client.data.heldItem = Item.empty();
         client.data.animationFrame = undefined;
         client.data.messageQueue = [];
         client.data.health = 100;
 
-        server.emit("join", );
+        server.emit("join",);
     }, "menu");
 
     createMap();
     function createMap() {
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 100 }));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 100 }));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-100, -100), 0, { shape: "circle", radius: 100 }));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(200, 200), 0, { shape: "rectangle", width: 100, height: 100 }));
+        tiles.push(new GameObject(12, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95 }));
+        tiles.push(new GameObject(13, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70 }));
+        tiles.push(new GameObject(14, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90 }));
+        tiles.push(new GameObject(14, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90 }));
+        tiles.push(new GameObject(15, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
 
@@ -453,9 +455,6 @@ window.onload = (function () {
         ctx.translate(-camera.x, -camera.y);
 
         drawCircle(0, 0, 5, "black");
-        for (const tile of tiles) {
-            drawTile(tile);
-        }
         //renders provided by the server
         for (const entity of serverEntities) {
             if (entity.id !== client.id) {
@@ -469,6 +468,9 @@ window.onload = (function () {
         }
         if (isAlive) {
             drawPlayer(client);
+        }
+        for (const tile of tiles) {
+            drawTile(tile);
         }
 
         ctx.restore();
@@ -493,7 +495,7 @@ window.onload = (function () {
 
             drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                renderer.drawSprite(playerSprites.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
+                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -528,8 +530,8 @@ window.onload = (function () {
         drawChatBubble(entity.data.messageQueue, color);
 
         //DRAW PLAYER BODY
-        renderer.drawSprite(playerSprites.get(0));
-        renderer.drawSprite(playerSprites.get(2));
+        renderer.drawSprite(spriteManager.get(0));
+        renderer.drawSprite(spriteManager.get(2));
 
         //DRAW WEAPON
         let item = entity.data.heldItem;
@@ -539,14 +541,14 @@ window.onload = (function () {
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
-            renderer.drawSprite(playerSprites.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
         } else if (item.type === "sword") {
-            renderer.drawSprite(playerSprites.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
         }
-        renderer.drawSprite(playerSprites.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(playerSprites.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(playerSprites.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
-        renderer.drawSprite(playerSprites.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
+        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
 
         //HITBOX
         if (devMode.AABB) {
@@ -556,15 +558,23 @@ window.onload = (function () {
     }
 
     function drawTile(tile) {
-        if (tile.data.shape === "circle") {
-            drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
-            if (devMode.AABB) {
-                drawRectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2, "red", 2);
-            }
-        } else if (tile.data.shape === "rectangle") {
-            drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, "red");
+        let centerX = tile.position.x;
+        let centerY = tile.position.y;
+        if (tile.data.type === "rectangle") {
+            centerX += tile.data.width * 0.5;
+            centerY += tile.data.health * 0.5;
         }
-
+        renderer.drawSprite(spriteManager.get(tile.id).startAt(centerX, centerY));
+        if (devMode.hitboxes) {
+            if (tile.data.shape === "circle") {
+                drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
+                if (devMode.AABB) {
+                    drawRectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2, "red", 2);
+                }
+            } else if (tile.data.shape === "rectangle") {
+                drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, "red");
+            }
+        }
     }
 
     function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
@@ -785,7 +795,7 @@ window.onload = (function () {
         }
     }
 
-    function nextSlot() { 
+    function nextSlot() {
         setSlot(selectedSlot + 1);
     }
 
@@ -927,7 +937,7 @@ window.onload = (function () {
         client.data.health -= damageValue;
         if (client.data.health <= 0) {
             screen = "menu";
-            server.emit("exit", );
+            server.emit("exit",);
             isAlive = false;
         }
     }
@@ -1035,7 +1045,7 @@ window.onload = (function () {
         console.log(`Joined with ID: \x1b[33m${client.id}\x1b[0m`);
         server.emit("init", client);
         if (isAlive) {
-            server.emit("join", );
+            server.emit("join",);
         }
     });
 
