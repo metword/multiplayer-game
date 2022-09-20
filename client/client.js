@@ -588,7 +588,7 @@ window.onload = (function () {
         drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
 
         const df = entity.data.damageFrame;
-        
+
         if (df >= 0 && df <= useDelay) {
             bctx.globalCompositeOperation = "source-atop";
             const halfDelay = useDelay * 0.5
@@ -693,26 +693,28 @@ window.onload = (function () {
     }
 
     function drawHealthBar(health) {
-        const left = -25;
-        const y = 35;
-        const width = 50;
-        const outerRadius = 3; 
-        const innerRadius = 2;
-        ctx.beginPath();
-        ctx.arc(left, y, outerRadius, Math.PI * 0.5, Math.PI * 1.5);
-        ctx.lineTo(left + width, y - outerRadius);
-        ctx.arc(left + width, y, outerRadius, Math.PI * 1.5, Math.PI * 0.5);
-        ctx.lineTo(left, y + outerRadius);
-        ctx.fillStyle = "rgb(0,0,0)";
-        ctx.fill();
+        if (health < 100) {
+            const left = -25;
+            const y = 35;
+            const width = 50;
+            const outerRadius = 3;
+            const innerRadius = 2;
+            ctx.beginPath();
+            ctx.arc(left, y, outerRadius, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.lineTo(left + width, y - outerRadius);
+            ctx.arc(left + width, y, outerRadius, Math.PI * 1.5, Math.PI * 0.5);
+            ctx.lineTo(left, y + outerRadius);
+            ctx.fillStyle = "rgb(0,0,0)";
+            ctx.fill();
 
-        ctx.beginPath();
-        ctx.arc(left, y, innerRadius, Math.PI * 0.5, Math.PI * 1.5);
-        ctx.lineTo(left + health * 0.5, y - innerRadius);
-        ctx.arc(left + health * 0.5, y, innerRadius, Math.PI * 1.5, Math.PI * 0.5);
-        ctx.lineTo(left, y + innerRadius);
-        ctx.fillStyle = "rgb(0,255,0)";
-        ctx.fill();
+            ctx.beginPath();
+            ctx.arc(left, y, innerRadius, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.lineTo(left + health * 0.5, y - innerRadius);
+            ctx.arc(left + health * 0.5, y, innerRadius, Math.PI * 1.5, Math.PI * 0.5);
+            ctx.lineTo(left, y + innerRadius);
+            ctx.fillStyle = "rgb(0,255,0)";
+            ctx.fill();
+        }
     }
 
     function drawButton(button, baseColor, hoverColor, clickColor) {
