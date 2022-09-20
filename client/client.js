@@ -11,7 +11,11 @@
  * GAMEPLAY FEATURES:
  * CRAFTING
  * MINING
- * PLAYER TURNS RED WHEN ATTACKED
+ * PLAYER TURNS RED WHEN ATTACKED - DONE
+ * HEALTH BAR ON PLAYER BODY INSTEAD OF ABOVE HOTBAR
+ * 
+ * FIXME:
+ * CRASH ON RELOAD (ERROR X NOT DEFINED)
  */
 
 window.onload = (function () {
@@ -540,19 +544,22 @@ window.onload = (function () {
         //CHAT BUBBLE
         drawChatBubble(entity.data.messageQueue, color);
 
+        //HEALTH BAR
+        drawHealthBar(entity.data.health);
+
         //IF PLAYER IS DAMAGED
-        const playerEffectCanvas = document.createElement("canvas");
-        const pctx = playerEffectCanvas.getContext("2d");
-        const offset = 100;
-        playerEffectCanvas.width = offset * 2;
-        playerEffectCanvas.height = offset * 2
-        pctx.translate(offset, offset);
+        const bodyCanvas = document.createElement("canvas");
+        const bctx = bodyCanvas.getContext("2d");
+        const halfLength = 100;
+        bodyCanvas.width = halfLength * 2;
+        bodyCanvas.height = halfLength * 2
+        bctx.translate(halfLength, halfLength); // CENTER OF OUR CANVAS IS 100, 100 NOW
 
         //DRAW PLAYER BODY
         //renderer.drawSprite(spriteManager.get(0));
         //renderer.drawSprite(spriteManager.get(2));
-        drawSprite(spriteManager.get(0).startAt(), pctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(2).startAt(), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(0).startAt(), bctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(2).startAt(), bctx, spriteManager.spriteSheet);
 
         //DRAW WEAPON
         let item = entity.data.heldItem;
@@ -563,11 +570,11 @@ window.onload = (function () {
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
-            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
 
         } else if (item.type === "sword") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
-            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
         }
 
         //DRAW HANDS
@@ -575,22 +582,22 @@ window.onload = (function () {
         //renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
         //renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
         //renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
-        drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
 
         const df = entity.data.damageFrame;
         
         if (df >= 0 && df <= useDelay) {
-            pctx.globalCompositeOperation = "source-atop";
+            bctx.globalCompositeOperation = "source-atop";
             const halfDelay = useDelay * 0.5
             const alpha = (-Math.abs(df - halfDelay) + halfDelay) / halfDelay;
-            pctx.fillStyle = `rgba(255,0,0,${alpha})`
-            pctx.fillRect(-offset, -offset, playerEffectCanvas.width, playerEffectCanvas.height);
+            bctx.fillStyle = `rgba(255,0,0,${alpha})`
+            bctx.fillRect(-halfLength, -halfLength, bodyCanvas.width, bodyCanvas.height);
         }
 
-        ctx.drawImage(playerEffectCanvas, -offset, -offset);
+        ctx.drawImage(bodyCanvas, -halfLength, -halfLength);
 
         ctx.globalCompositeOperation = "source-over";
 
@@ -685,6 +692,29 @@ window.onload = (function () {
         }
     }
 
+    function drawHealthBar(health) {
+        const left = -25;
+        const y = 35;
+        const width = 50;
+        const outerRadius = 3; 
+        const innerRadius = 2;
+        ctx.beginPath();
+        ctx.arc(left, y, outerRadius, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.lineTo(left + width, y - outerRadius);
+        ctx.arc(left + width, y, outerRadius, Math.PI * 1.5, Math.PI * 0.5);
+        ctx.lineTo(left, y + outerRadius);
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(left, y, innerRadius, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.lineTo(left + health * 0.5, y - innerRadius);
+        ctx.arc(left + health * 0.5, y, innerRadius, Math.PI * 1.5, Math.PI * 0.5);
+        ctx.lineTo(left, y + innerRadius);
+        ctx.fillStyle = "rgb(0,255,0)";
+        ctx.fill();
+    }
+
     function drawButton(button, baseColor, hoverColor, clickColor) {
         let color = "black";
         if (button.clicking && button.hovering) {
@@ -696,6 +726,7 @@ window.onload = (function () {
         }
         drawRectangle(button.bounds.x, button.bounds.y, button.bounds.width, button.bounds.height, color);
     }
+
 
     // CLIENT HAX --------------------- 
     function updatePosition() {
