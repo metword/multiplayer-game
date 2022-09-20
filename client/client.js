@@ -15,6 +15,9 @@
  * HEALTH BAR ON PLAYER BODY INSTEAD OF ABOVE HOTBAR
  * COORDINATE SYSTEM WHICH CAN BE TOGGLED
  * TOGGLE DEBUG FEATURES FROM INGAME
+ * FIX JANKY DIAMOND SPRITE
+ * RED HIGHLIGHT WEIRD ON CERTAIN RELOADS...
+ * HEALTH BAR HAS A WEIRD ASPECT RATIO (0 HP WOULD BE A CIRCLE)
  * 
  * FIXME:
  * CRASH ON RELOAD (ERROR X NOT DEFINED)
@@ -389,7 +392,7 @@ window.onload = (function () {
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
-    const inventory = [Item.empty(), new Item(8, "sword"), Item.empty(), Item.empty(), Item.empty(), new Item(5, "pickaxe", 9999)];
+    const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
 
     const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
         screen = "game";
@@ -526,8 +529,8 @@ window.onload = (function () {
             }
         }
         // health bar
-        drawRectangle(centerX - 105, canvas.height - 145, 210, 30, "rgba(0,0,0,0.25)");
-        drawRectangle(centerX - 100, canvas.height - 140, client.data.health * 2, 20, "red");
+        // drawRectangle(centerX - 105, canvas.height - 145, 210, 30, "rgba(0,0,0,0.25)");
+        // drawRectangle(centerX - 100, canvas.height - 140, client.data.health * 2, 20, "red");
 
     }
 
@@ -552,7 +555,7 @@ window.onload = (function () {
         //IF PLAYER IS DAMAGED
         const bodyCanvas = document.createElement("canvas");
         const bctx = bodyCanvas.getContext("2d");
-        const halfLength = 100;
+        const halfLength = 128;
         bodyCanvas.width = halfLength * 2;
         bodyCanvas.height = halfLength * 2
         bctx.translate(halfLength, halfLength); // CENTER OF OUR CANVAS IS 100, 100 NOW
