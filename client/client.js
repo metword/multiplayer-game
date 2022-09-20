@@ -3,10 +3,15 @@
  * RENDER PLAYER HEALTHBAR ON PLAYER SPRITE?
  * 0.5 SECOND ATTACK DELAY
  * RED OVER PLAYER IN INVINSIBILITY FRAME
- * BETTER MAP WITH RESOURCE TILES
+ * BETTER MAP WITH RESOURCE TILES (PART 1 DONE?)
  * CRAFTING SYSTEM TO MAKE BETTER ITEMS BASED ON INVENTORY
  * PLAYER COLOR SELECTION
  * PLAYER INTERPOLATION (DOWN TO 20 SERVER TICKS PER SECOND TO SAVE RAM)
+ * 
+ * GAMEPLAY FEATURES:
+ * CRAFTING
+ * MINING
+ * PLAYER TURNS RED WHEN ATTACKED
  */
 
 window.onload = (function () {
@@ -242,6 +247,11 @@ window.onload = (function () {
         }
     }
 
+    function drawSprite(sprite, context, spriteSheet) {
+        context.drawImage(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height,
+            sprite.translation.x - sprite.centerX, sprite.translation.y - sprite.centerY, sprite.width, sprite.height);
+    }
+
     class Item {
         id; //id in the sprite sheet, can handle damage values among other things
         type;
@@ -357,13 +367,14 @@ window.onload = (function () {
     const useDelay = 800;
     let attackStart = 0;
     let attackQueued = false;
+    let damageStart = 0;
 
     const velocityFactor = 1;
     const playerRadius = 20;
     const boundingBoxFactor = 5; // box factor
 
     //THIS ENTITY
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), animationFrame: undefined, messageQueue: [], health: 100 });
+    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), attackFrame: -1, damageFrame: -1, messageQueue: [], health: 100 });
     const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
     let isAlive = false;
 
@@ -380,7 +391,8 @@ window.onload = (function () {
         client.position = new Vec(0, 0); //randomize?
         client.angle = 0;
         client.data.heldItem = Item.empty();
-        client.data.animationFrame = undefined;
+        client.data.attackFrame = -1;
+        client.data.damageFrame = -1;
         client.data.messageQueue = [];
         client.data.health = 100;
 
@@ -416,7 +428,7 @@ window.onload = (function () {
         updateCamera();
         updateMouseAngle();
         fireMouseClicks();
-        updateAttack();
+        updateAttackStatus();
         renderGame();
 
         if (screen === "game" || screen === "chat") {
@@ -464,7 +476,6 @@ window.onload = (function () {
 
                 }
             }
-
         }
         if (isAlive) {
             drawPlayer(client);
@@ -529,26 +540,59 @@ window.onload = (function () {
         //CHAT BUBBLE
         drawChatBubble(entity.data.messageQueue, color);
 
+        //IF PLAYER IS DAMAGED
+        const playerEffectCanvas = document.createElement("canvas");
+        const pctx = playerEffectCanvas.getContext("2d");
+        const offset = 100;
+        playerEffectCanvas.width = offset * 2;
+        playerEffectCanvas.height = offset * 2
+        pctx.translate(offset, offset);
+
         //DRAW PLAYER BODY
-        renderer.drawSprite(spriteManager.get(0));
-        renderer.drawSprite(spriteManager.get(2));
+        //renderer.drawSprite(spriteManager.get(0));
+        //renderer.drawSprite(spriteManager.get(2));
+        drawSprite(spriteManager.get(0).startAt(), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(2).startAt(), pctx, spriteManager.spriteSheet);
 
         //DRAW WEAPON
         let item = entity.data.heldItem;
-        const animation = animate(item.type, entity.data.animationFrame);
+        const animation = animate(item.type, entity.data.attackFrame);
         const r = animation.r; // right hand vec
         const l = animation.l; // left hand vec
         const w = animation.w; // weapon vec
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
-            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+            //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+
         } else if (item.type === "sword") {
-            renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+            //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
         }
-        renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
-        renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
+
+        //DRAW HANDS
+        //renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
+        //renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
+        //renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
+        //renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
+        drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+        drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a), pctx, spriteManager.spriteSheet);
+
+        const df = entity.data.damageFrame;
+        
+        if (df >= 0 && df <= useDelay) {
+            pctx.globalCompositeOperation = "source-atop";
+            const halfDelay = useDelay * 0.5
+            const alpha = (-Math.abs(df - halfDelay) + halfDelay) / halfDelay;
+            pctx.fillStyle = `rgba(255,0,0,${alpha})`
+            pctx.fillRect(-offset, -offset, playerEffectCanvas.width, playerEffectCanvas.height);
+        }
+
+        ctx.drawImage(playerEffectCanvas, -offset, -offset);
+
+        ctx.globalCompositeOperation = "source-over";
 
         //HITBOX
         if (devMode.AABB) {
@@ -828,26 +872,27 @@ window.onload = (function () {
                 mouse.clickCount = 0; //if we DONT fire an input this value will be 1 and will fire even with mouse down
                 attackStart = Date.now();
                 attackQueued = true;
-                client.data.animationFrame = 0;
+                client.data.attackFrame = 0;
                 //console.log("INPUT");
             }
         }
     }
 
-    function updateAttack() {
-        client.data.animationFrame = Date.now() - attackStart;
+    function updateAttackStatus() {
+        client.data.attackFrame = Date.now() - attackStart;
+        client.data.damageFrame = Date.now() - damageStart;
         if (attackQueued && Date.now() - attackStart > useDelay * 0.5) {
             attack(); // does interactions
             attackQueued = false;
         }
     }
 
-    function animate(name, animationFrame) {
+    function animate(name, attackFrame) {
         if (name === "fists") {
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
-            if (animationFrame >= 0 && animationFrame <= useDelay) {
-                const x = animationFrame;
+            if (attackFrame >= 0 && attackFrame <= useDelay) {
+                const x = attackFrame;
                 const fourthDelay = useDelay * 0.25;
                 const dr = Math.max(-Math.abs(x - fourthDelay) + fourthDelay, 0) * 0.05;
                 const dl = Math.max(-Math.abs(x - fourthDelay * 3) + fourthDelay, 0) * 0.05;
@@ -864,8 +909,8 @@ window.onload = (function () {
             const l = new Vec(15, -15);
             const w = new Vec(20, -30);
             let a = 0;
-            if (animationFrame >= 0 && animationFrame <= useDelay) {
-                const x = animationFrame;
+            if (attackFrame >= 0 && attackFrame <= useDelay) {
+                const x = attackFrame;
                 if (x <= useDelay * 0.25) {
                     a = -4 / useDelay * x; // first quarter
                 } else if (x <= useDelay * 0.5) {
@@ -885,8 +930,8 @@ window.onload = (function () {
             const l = new Vec(15, -15);
             const w = new Vec(3, 15);
             let a = 0;
-            if (animationFrame >= 0 && animationFrame <= useDelay) {
-                const x = animationFrame;
+            if (attackFrame >= 0 && attackFrame <= useDelay) {
+                const x = attackFrame;
                 if (x <= useDelay * 0.25) {
                     w.x = 3 + -10 / useDelay * x; // first quarter
                     r.x = w.x + 12;
@@ -935,6 +980,7 @@ window.onload = (function () {
 
     function handleDamage(damageValue) {
         client.data.health -= damageValue;
+        damageStart = Date.now();
         if (client.data.health <= 0) {
             screen = "menu";
             server.emit("exit",);
