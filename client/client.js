@@ -530,12 +530,12 @@ window.onload = (function () {
     }
 
     function drawPlayer(entity) {
-        let color;
-        if (entity.id === client.id) {
-            color = "rgb(0,255,0)";
-        } else {
-            color = "rgb(255,0,0)";
-        }
+        let color = "rgb(0,255,0)";
+        //if (entity.id === client.id) {
+        //    color = "rgb(0,255,0)";
+        //} else {
+        //    color = "rgb(255,0,0)";
+        //}
 
         //DRAWN RELATIVE TO THE PLAYERS POSITION
         ctx.save();
