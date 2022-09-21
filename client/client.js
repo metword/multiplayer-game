@@ -343,6 +343,7 @@ window.onload = (function () {
         shift: false,
 
     }
+    
     const mouse = {
         mouseDown: false,
         clickCount: 0,
@@ -501,8 +502,6 @@ window.onload = (function () {
     }
 
     //ADD LAYERING
-    //ADD BOW
-
     function renderPlayerHud() {
         const centerX = canvas.width * 0.5;
 
@@ -701,7 +700,6 @@ window.onload = (function () {
         if (health < 100) {
             const y = 35;
 
-
             const left = -25;
             const width = 50;
 
@@ -749,7 +747,6 @@ window.onload = (function () {
         }
         drawRectangle(button.bounds.x, button.bounds.y, button.bounds.width, button.bounds.height, color);
     }
-
 
     // CLIENT HAX --------------------- 
     function updatePosition() {
@@ -801,7 +798,6 @@ window.onload = (function () {
         }
         //console.log(client.position.x, + " " +   client.position.y);
     }
-
 
     function updateCamera() {
         //1   => camera tracks player 1-1
@@ -927,7 +923,6 @@ window.onload = (function () {
                 attackStart = Date.now();
                 attackQueued = true;
                 client.data.attackFrame = 0;
-                //console.log("INPUT");
             }
         }
     }
