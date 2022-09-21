@@ -699,11 +699,18 @@ window.onload = (function () {
 
     function drawHealthBar(health) {
         if (health < 100) {
-            const left = -25;
             const y = 35;
+
+
+            const left = -25;
             const width = 50;
+
             const outerRadius = 3;
             const innerRadius = 2;
+
+            const innerLeft = left - 2;
+            const healthWidth = health * 0.55;
+
             ctx.beginPath();
             ctx.arc(left, y, outerRadius, Math.PI * 0.5, Math.PI * 1.5);
             ctx.lineTo(left + width, y - outerRadius);
@@ -713,12 +720,21 @@ window.onload = (function () {
             ctx.fill();
 
             ctx.beginPath();
-            ctx.arc(left, y, innerRadius, Math.PI * 0.5, Math.PI * 1.5);
-            ctx.lineTo(left + health * 0.5, y - innerRadius);
-            ctx.arc(left + health * 0.5, y, innerRadius, Math.PI * 1.5, Math.PI * 0.5);
-            ctx.lineTo(left, y + innerRadius);
+            ctx.arc(innerLeft, y, innerRadius, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.lineTo(innerLeft + healthWidth, y - innerRadius);
+            ctx.arc(innerLeft + healthWidth, y, innerRadius, Math.PI * 1.5, Math.PI * 0.5);
+            ctx.lineTo(innerLeft, y + innerRadius);
             ctx.fillStyle = "rgb(0,255,0)";
             ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(left, y, outerRadius, Math.PI * 0.5, Math.PI * 1.5);
+            ctx.lineTo(left + width, y - outerRadius);
+            ctx.arc(left + width, y, outerRadius, Math.PI * 1.5, Math.PI * 0.5);
+            ctx.lineTo(left, y + outerRadius);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgb(0,0,0)";
+            ctx.stroke();
         }
     }
 
