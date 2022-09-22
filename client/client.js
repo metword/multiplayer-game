@@ -49,6 +49,10 @@ window.onload = (function () {
         lengthSquared() {
             return this.x * this.x + this.y * this.y;
         }
+
+        componentSize() {
+            return Math.abs(this.x) + Math.abs(this.y);
+        }
     }
 
     class Rectangle {
@@ -279,7 +283,7 @@ window.onload = (function () {
                 this.gather = 0;
             } else if (type === "pickaxe") { // 5 damage  
                 this.damage = 5;
-                this.gather = id - 2;
+                this.gather = id - 6;
             } else { // 3 damage
                 this.damage = 3;
                 this.gather = 1;
@@ -289,6 +293,8 @@ window.onload = (function () {
         static empty() {
             return new Item(-1);
         }
+
+
     }
 
     class ClickableWidget {
@@ -382,6 +388,7 @@ window.onload = (function () {
     let attackStart = 0;
     let attackQueued = false;
     let damageStart = 0;
+    let healingStart = 0;
 
     const velocityFactor = 1;
     const playerRadius = 20;
@@ -398,7 +405,24 @@ window.onload = (function () {
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
     //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
-    const inventory = [new Item(7, "pickaxe", 0, 11), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty()];
+
+    const items = {
+        empty: () => { return Item.empty() },
+        wood: () => { return new Item(4, "item", 1, undefined) },
+        stone: () => { return new Item(5, "item", 1, undefined) },
+        iron: () => { return new Item(6, "item", 1, undefined) },
+        diamond: () => { return new Item(7, "item", 1, undefined) },
+        wood_pickaxe: () => { return new Item(8, "pickaxe", 1, 4) },
+        stone_pickaxe: () => { return new Item(9, "pickaxe", 1, 5) },
+        iron_pickaxe: () => { return new Item(10, "pickaxe", 1, 6) },
+        diamond_pickaxe: () => { return new Item(11, "pickaxe", 1, 7) },
+        wood_sword: () => { return new Item(12, "sword", 1, 8) },
+        stone_sword: () => { return new Item(13, "sword", 1, 9) },
+        iron_sword: () => { return new Item(14, "sword", 1, 10) },
+        diamond_sword: () => { return new Item(15, "sword", 1, 11) },
+    }
+
+    const inventory = [items.diamond_pickaxe(), items.empty(), items.empty(), items.empty(), items.empty(), items.empty(), items.empty()];
 
     const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
         screen = "game";
@@ -416,14 +440,14 @@ window.onload = (function () {
 
     createMap();
     function createMap() {
-        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
-        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: new Item(4)}));
-        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: new Item(5)}));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: new Item(6)}));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: new Item(6)}));
-        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: new Item(7)}));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
-        tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
+        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));)
+        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: items.wood() }));
+        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: items.stone() }));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: items.iron() }));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: items.iron() }));
+        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: items.diamond() }));
+        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
+        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
 
         for (const tile of tiles) {
             if (tile.data.shape === "circle") {
@@ -438,7 +462,7 @@ window.onload = (function () {
     // IMPLEMENT VARIABLE TIME STEP
     function gameLoop() {
 
-        updatePosition();
+        updatePlayer();
         doCollisions();
         updateCamera();
         updateMouseAngle();
@@ -519,7 +543,7 @@ window.onload = (function () {
 
             drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                drawSprite(gameSprites.get(inventory[i].spriteId).startAt(slotLeft + 50, slotTop + 50), ctx, gameSprites.spriteSheet);
+                drawSprite(gameSprites.get(inventory[i].id).startAt(slotLeft + 50, slotTop + 50), ctx, gameSprites.spriteSheet);
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -579,11 +603,11 @@ window.onload = (function () {
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
-            drawSprite(playerSprites.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
 
         } else if (item.type === "sword") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
-            drawSprite(playerSprites.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
         }
 
         //DRAW HANDS
@@ -754,7 +778,7 @@ window.onload = (function () {
     }
 
     // CLIENT HAX --------------------- 
-    function updatePosition() {
+    function updatePlayer() {
         //read keys
         if (!devMode.movementent) {
             if (keyPresses.up) {
@@ -783,6 +807,19 @@ window.onload = (function () {
 
             if (Math.abs(velocity.x) < 0.5) velocity.x = 0;
             if (Math.abs(velocity.y) < 0.5) velocity.y = 0;
+
+            if (velocity.componentSize() == 0) {
+                if (healingStart < 20) {
+                    healingStart++;
+                } else {
+                    healingStart = 0;
+                    if (client.data.health < 100) {
+                        client.data.health++;
+                    }
+                }
+            } else {
+                healingStart = 0;
+            }
         } else {
             if (keyPresses.up) {
                 client.position.y -= 2;
@@ -1037,7 +1074,7 @@ window.onload = (function () {
         }
         for (const tile of tiles) {
             if (rectIntersect(tile.data.AABB, clientAABB)) {
-                
+
                 if (tile.data.shape === "circle") {
                     if (circleIntersect(attackCircle, new Circle(tile.position.x, tile.position.y, tile.data.radius))) {
                         mineResource(tile, client.data.heldItem.gather);
