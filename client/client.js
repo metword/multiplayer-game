@@ -18,6 +18,7 @@
  * FIX JANKY DIAMOND SPRITE
  * RED HIGHLIGHT WEIRD ON CERTAIN RELOADS...
  * HEALTH BAR HAS A WEIRD ASPECT RATIO (0 HP WOULD BE A CIRCLE)
+ * AI MONSTERS THAT MAKE IT HARD TO GET THINGS LIKE DIAMONDS...
  * 
  * FIXME:
  * CRASH ON RELOAD (ERROR X NOT DEFINED)
@@ -265,18 +266,20 @@ window.onload = (function () {
         id; //id in the sprite sheet, can handle damage values among other things
         type;
         count;
+        spriteId;
         damage;
         gather;
-        constructor(id, type, count = 0) {
+        constructor(id, type = "item", count = 0, spriteId = id) {
             this.id = id;
             this.type = type;
             this.count = count;
+            this.spriteId = spriteId;
             if (type === "sword") {
                 this.damage = (id - 8) * 4 + 10; // 10 damage + 4 per level
                 this.gather = 0;
             } else if (type === "pickaxe") { // 5 damage  
                 this.damage = 5;
-                this.gather = id + 1;
+                this.gather = id - 2;
             } else { // 3 damage
                 this.damage = 3;
                 this.gather = 1;
@@ -284,7 +287,7 @@ window.onload = (function () {
         }
 
         static empty() {
-            return new Item(-1, "fists");
+            return new Item(-1);
         }
     }
 
@@ -343,7 +346,7 @@ window.onload = (function () {
         shift: false,
 
     }
-    
+
     const mouse = {
         mouseDown: false,
         clickCount: 0,
@@ -355,12 +358,13 @@ window.onload = (function () {
 
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false
-    const spriteManager = new SpriteManager();
-    spriteManager.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
-    spriteManager.loadImage("/sprites2.png", 1, 4, 256, 256, 2);
+    ctx.imageSmoothingEnabled = false;
+    const playerSprites = new SpriteManager();
+    const gameSprites = new SpriteManager();
+    playerSprites.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
+    gameSprites.loadImage("/sprites2.png", 4, 4, 256, 256, 2);
 
-    const renderer = new Renderer(ctx, spriteManager.spriteSheet);
+    const renderer = new Renderer(ctx, playerSprites.spriteSheet);
     const mathHelper = new AngleHelper(65536);
 
     //screens: game, chat, menu
@@ -393,14 +397,15 @@ window.onload = (function () {
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
-    const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
+    //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
+    const inventory = [new Item(7, "pickaxe", 0, 11), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty()];
 
     const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
         screen = "game";
         isAlive = true;
         client.position = new Vec(0, 0); //randomize?
         client.angle = 0;
-        client.data.heldItem = Item.empty();
+        client.data.heldItem = inventory[0];
         client.data.attackFrame = -1;
         client.data.damageFrame = -1;
         client.data.messageQueue = [];
@@ -412,11 +417,11 @@ window.onload = (function () {
     createMap();
     function createMap() {
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));
-        tiles.push(new GameObject(12, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95 }));
-        tiles.push(new GameObject(13, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70 }));
-        tiles.push(new GameObject(14, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90 }));
-        tiles.push(new GameObject(14, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90 }));
-        tiles.push(new GameObject(15, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90 }));
+        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: new Item(4)}));
+        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: new Item(5)}));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: new Item(6)}));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: new Item(6)}));
+        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: new Item(7)}));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
         tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
 
@@ -429,8 +434,8 @@ window.onload = (function () {
         }
     }
 
-    // CLIENT DUTY!!!
-    //IMPLEMENT VARIABLE TIME STEP
+    // CLIENT GAME LOOP
+    // IMPLEMENT VARIABLE TIME STEP
     function gameLoop() {
 
         updatePosition();
@@ -514,7 +519,7 @@ window.onload = (function () {
 
             drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                renderer.drawSprite(spriteManager.get(inventory[i].id).startAt(slotLeft + 15, slotTop + 85, Math.PI * 0.75));
+                drawSprite(gameSprites.get(inventory[i].spriteId).startAt(slotLeft + 50, slotTop + 50), ctx, gameSprites.spriteSheet);
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -562,8 +567,8 @@ window.onload = (function () {
         //DRAW PLAYER BODY
         //renderer.drawSprite(spriteManager.get(0));
         //renderer.drawSprite(spriteManager.get(2));
-        drawSprite(spriteManager.get(0).startAt(), bctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(2).startAt(), bctx, spriteManager.spriteSheet);
+        drawSprite(playerSprites.get(0).startAt(), bctx, playerSprites.spriteSheet);
+        drawSprite(playerSprites.get(2).startAt(), bctx, playerSprites.spriteSheet);
 
         //DRAW WEAPON
         let item = entity.data.heldItem;
@@ -574,11 +579,11 @@ window.onload = (function () {
         const a = animation.a; // angle
         if (item.type === "pickaxe") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
-            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+            drawSprite(playerSprites.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
 
         } else if (item.type === "sword") {
             //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
-            drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+            drawSprite(playerSprites.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
         }
 
         //DRAW HANDS
@@ -586,10 +591,10 @@ window.onload = (function () {
         //renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
         //renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
         //renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
-        drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
-        drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, spriteManager.spriteSheet);
+        drawSprite(playerSprites.get(1).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+        drawSprite(playerSprites.get(3).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+        drawSprite(playerSprites.get(1).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+        drawSprite(playerSprites.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
 
         const df = entity.data.damageFrame;
 
@@ -619,7 +624,7 @@ window.onload = (function () {
             centerX += tile.data.width * 0.5;
             centerY += tile.data.health * 0.5;
         }
-        renderer.drawSprite(spriteManager.get(tile.id).startAt(centerX, centerY));
+        drawSprite(gameSprites.get(tile.id).startAt(centerX, centerY), ctx, gameSprites.spriteSheet);
         if (devMode.hitboxes) {
             if (tile.data.shape === "circle") {
                 drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
@@ -839,7 +844,7 @@ window.onload = (function () {
             rect2.y + rect2.height >= rect1.y
         ) {
             if (devMode.AABB) {
-                //vconsole.log("AABB");
+                //console.log("AABB");
             }
             return true;
         }
@@ -850,6 +855,12 @@ window.onload = (function () {
         const distanceBetween = new Vec(circle1.x - circle2.x, circle1.y - circle2.y);
         const sumRadius = circle1.radius + circle2.radius;
         return distanceBetween.lengthSquared() <= sumRadius * sumRadius;
+    }
+
+    function rectCircleIntersect(rect, circle) {
+        const nearestPoint = new Vec(Math.max(rect.x, Math.min(rect.x + rect.width, circle.x)), Math.max(rect.y, Math.min(rect.y + rect.height, circle.y)));
+        const distanceToCircle = new Vec(nearestPoint.x - circle.x, nearestPoint.y - circle.y);
+        return distanceToCircle.lengthSquared() <= circle.radius * circle.radius;
     }
 
     function resolveCollision(tile) {
@@ -931,13 +942,13 @@ window.onload = (function () {
         client.data.attackFrame = Date.now() - attackStart;
         client.data.damageFrame = Date.now() - damageStart;
         if (attackQueued && Date.now() - attackStart > useDelay * 0.5) {
-            attack(); // does interactions
+            interact(); // does interactions
             attackQueued = false;
         }
     }
 
     function animate(name, attackFrame) {
-        if (name === "fists") {
+        if (name === "item") {
             const r = new Vec(15, 15);
             const l = new Vec(15, -15);
             if (attackFrame >= 0 && attackFrame <= useDelay) {
@@ -1004,7 +1015,7 @@ window.onload = (function () {
         }
     }
 
-    function attack() {
+    function interact() {
         const interactionPacket = {
             type: "damage",
             value: client.data.heldItem.damage,
@@ -1024,7 +1035,52 @@ window.onload = (function () {
                 server.emit("interact", { receiver: entity.id, data: interactionPacket });
             }
         }
+        for (const tile of tiles) {
+            if (rectIntersect(tile.data.AABB, clientAABB)) {
+                
+                if (tile.data.shape === "circle") {
+                    if (circleIntersect(attackCircle, new Circle(tile.position.x, tile.position.y, tile.data.radius))) {
+                        mineResource(tile, client.data.heldItem.gather);
+                    }
+                } else if (tile.data.shape === "rectangle") {
+                    if (rectCircleIntersect(tile.data.AABB, attackCircle)) {
+                        mineResource(tile, client.data.heldItem.gather)
+                    }
+                }
+            }
+        }
         //check collision between player interaction hitbox and all entities which can be interacted with?
+    }
+
+    function mineResource(tile, gatherValue) {
+        const countItems = gatherValue - tile.id;
+        if (countItems > 0) {
+            addToInventory(tile.data.dropItem, countItems);
+        }
+    }
+
+    //TODO MAKE LIST OF ITEMS? MAKE registry of all things in the game instead of id system
+    function addToInventory(item, count) {
+        let hasAdded = false;
+        for (const slot of inventory) {
+            // try to add it to the first stack.
+            if (!hasAdded && slot.id === item.id && slot.type != "sword" && slot.type != "pickaxe") {
+                slot.count += count;
+                hasAdded = true;
+            }
+        }
+        if (!hasAdded) {
+            for (const emptySlot of inventory) {
+                if (!hasAdded && emptySlot.id === -1) {
+                    emptySlot.id = item.id;
+                    emptySlot.spriteId = item.spriteId;
+                    emptySlot.damage = item.damage;
+                    emptySlot.type = item.type;
+                    emptySlot.count += count;
+                    hasAdded = true;
+                }
+            }
+        }
     }
 
     function handleDamage(damageValue) {
