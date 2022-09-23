@@ -421,7 +421,7 @@ window.onload = (function () {
         wood_sword: { name: "Wood Sword", item: Item.wood_sword(), recipe: [Item.wood(30)], button: new ClickableWidget(undefined, () => craft(crafts.wood_sword), "game") },
         stone_sword: { name: "Stone Sword", item: Item.stone_sword(), recipe: [Item.wood(60), Item.stone(40), Item.wood_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.stone_sword), "game") },
         iron_sword: { name: "Iron Sword", item: Item.iron_sword(), recipe: [Item.stone(80), Item.iron(50), Item.stone_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.iron_sword), "game") },
-        diamond_sword: { name: "Diamond Sword", item: Item.diamond_sword(), recipe: [Item.iron(100), Item.diamond(60), Item.diamond_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.diamond_sword), "game") },
+        diamond_sword: { name: "Diamond Sword", item: Item.diamond_sword(), recipe: [Item.iron(100), Item.diamond(60), Item.iron_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.diamond_sword), "game") },
     }
 
     const inventory = [Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty()];
