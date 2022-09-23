@@ -1128,7 +1128,7 @@ window.onload = (function () {
             }
         }
         updateCrafts();
-        console.log(inventory);
+        //console.log(inventory);
         return hasAdded;
     }
 
