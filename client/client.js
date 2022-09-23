@@ -277,7 +277,7 @@ window.onload = (function () {
             this.count = count;
             this.spriteId = spriteId;
             if (type === "sword") {
-                this.damage = (id - 8) * 4 + 10; // 10 damage + 4 per level
+                this.damage = (id - 12) * 4 + 10; // 10 damage + 4 per level
                 this.gather = 0;
             } else if (type === "pickaxe") { // 5 damage  
                 this.damage = 5;
