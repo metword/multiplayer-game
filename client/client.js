@@ -9,16 +9,14 @@
  * PLAYER INTERPOLATION (DOWN TO 20 SERVER TICKS PER SECOND TO SAVE RAM)
  * 
  * GAMEPLAY FEATURES:
- * CRAFTING
- * MINING
- * PLAYER TURNS RED WHEN ATTACKED - DONE
- * HEALTH BAR ON PLAYER BODY INSTEAD OF ABOVE HOTBAR
+ * CRAFTING TODO ADD CRAFTING SPRITES TO HUD INSTEAD OF TEXT...
  * COORDINATE SYSTEM WHICH CAN BE TOGGLED
  * TOGGLE DEBUG FEATURES FROM INGAME
  * FIX JANKY DIAMOND SPRITE
  * RED HIGHLIGHT WEIRD ON CERTAIN RELOADS...
  * HEALTH BAR HAS A WEIRD ASPECT RATIO (0 HP WOULD BE A CIRCLE)
  * AI MONSTERS THAT MAKE IT HARD TO GET THINGS LIKE DIAMONDS...
+ * 
  * 
  * FIXME:
  * CRASH ON RELOAD (ERROR X NOT DEFINED)
@@ -290,11 +288,20 @@ window.onload = (function () {
             }
         }
 
-        static empty() {
-            return new Item(-1);
-        }
+        static empty() { return new Item(-1, "item", 0, undefined) }
 
-
+        static wood(c) { return new Item(4, "item", c, undefined) }
+        static stone(c) { return new Item(5, "item", c, undefined) }
+        static iron(c) { return new Item(6, "item", c, undefined) }
+        static diamond(c) { return new Item(7, "item", c, undefined) }
+        static wood_pickaxe(c) { return new Item(8, "pickaxe", c, 4) }
+        static stone_pickaxe(c) { return new Item(9, "pickaxe", c, 5) }
+        static iron_pickaxe(c) { return new Item(10, "pickaxe", c, 6) }
+        static diamond_pickaxe(c) { return new Item(11, "pickaxe", c, 7) }
+        static wood_sword(c) { return new Item(12, "sword", c, 8) }
+        static stone_sword(c) { return new Item(13, "sword", c, 9) }
+        static iron_sword(c) { return new Item(14, "sword", c, 10) }
+        static diamond_sword(c) { return new Item(15, "sword", c, 11) }
     }
 
     class ClickableWidget {
@@ -305,7 +312,7 @@ window.onload = (function () {
         hovering;
         clicking;
 
-        constructor(bounds, clickAction, activeScreen) {
+        constructor(bounds = new Rectangle(0, 0, 0, 0), clickAction, activeScreen) {
             this.bounds = bounds;
             this.clickAction = clickAction;
             this.activeScreen = activeScreen;
@@ -406,23 +413,19 @@ window.onload = (function () {
     let selectedSlot = 0;
     //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
 
-    const items = {
-        empty: () => { return Item.empty() },
-        wood: () => { return new Item(4, "item", 1, undefined) },
-        stone: () => { return new Item(5, "item", 1, undefined) },
-        iron: () => { return new Item(6, "item", 1, undefined) },
-        diamond: () => { return new Item(7, "item", 1, undefined) },
-        wood_pickaxe: () => { return new Item(8, "pickaxe", 1, 4) },
-        stone_pickaxe: () => { return new Item(9, "pickaxe", 1, 5) },
-        iron_pickaxe: () => { return new Item(10, "pickaxe", 1, 6) },
-        diamond_pickaxe: () => { return new Item(11, "pickaxe", 1, 7) },
-        wood_sword: () => { return new Item(12, "sword", 1, 8) },
-        stone_sword: () => { return new Item(13, "sword", 1, 9) },
-        iron_sword: () => { return new Item(14, "sword", 1, 10) },
-        diamond_sword: () => { return new Item(15, "sword", 1, 11) },
+    const crafts = {
+        wood_pickaxe: { name: "Wood Pickaxe", item: Item.wood_pickaxe(), recipe: [Item.wood(20)], button: new ClickableWidget(undefined, () => craft(crafts.wood_pickaxe), "game") },
+        stone_pickaxe: { name: "Stone Pickaxe", item: Item.stone_pickaxe(), recipe: [Item.wood(40), Item.stone(30), Item.wood_pickaxe(1)], button: new ClickableWidget(undefined, () => craft(crafts.stone_pickaxe), "game") },
+        iron_pickaxe: { name: "Iron Pickaxe", item: Item.iron_pickaxe(), recipe: [Item.stone(60), Item.iron(40), Item.stone_pickaxe(1)], button: new ClickableWidget(undefined, () => craft(crafts.iron_pickaxe), "game") },
+        diamond_pickaxe: { name: "Diamond Pickaxe", item: Item.diamond_pickaxe(), recipe: [Item.iron(80), Item.diamond(50), Item.iron_pickaxe(1)], button: new ClickableWidget(undefined, () => craft(crafts.diamond_pickaxe), "game") },
+        wood_sword: { name: "Wood Sword", item: Item.wood_sword(), recipe: [Item.wood(30)], button: new ClickableWidget(undefined, () => craft(crafts.wood_sword), "game") },
+        stone_sword: { name: "Stone Sword", item: Item.stone_sword(), recipe: [Item.wood(60), Item.stone(40), Item.wood_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.stone_sword), "game") },
+        iron_sword: { name: "Iron Sword", item: Item.iron_sword(), recipe: [Item.stone(80), Item.iron(50), Item.stone_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.iron_sword), "game") },
+        diamond_sword: { name: "Diamond Sword", item: Item.diamond_sword(), recipe: [Item.iron(100), Item.diamond(60), Item.diamond_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.diamond_sword), "game") },
     }
 
-    const inventory = [items.diamond_pickaxe(), items.empty(), items.empty(), items.empty(), items.empty(), items.empty(), items.empty()];
+    const inventory = [Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty()];
+    let availCrafts = [];
 
     const playButton = new ClickableWidget(new Rectangle(0, 0, 150, 50), () => {
         screen = "game";
@@ -441,11 +444,11 @@ window.onload = (function () {
     createMap();
     function createMap() {
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));)
-        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: items.wood() }));
-        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: items.stone() }));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: items.iron() }));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: items.iron() }));
-        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: items.diamond() }));
+        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: Item.wood() }));
+        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: Item.stone() }));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: Item.iron() }));
+        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: Item.iron() }));
+        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: Item.diamond() }));
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
         //tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
 
@@ -550,11 +553,20 @@ window.onload = (function () {
                     ctx.fillStyle = "rgb(255,255,255)";
 
                     const textWidth = ctx.measureText(count).width;
-
-                    ctx.lineWidth = 4;
                     ctx.fillText(count, slotLeft + 95 - textWidth, slotTop + 95, 100);
                 }
             }
+        }
+
+        for (let i = 0; i < availCrafts.length; i++) {
+            const top = 20 + i * 16;
+            const left = 20;
+            ctx.font = "bold 16px sans-serif";
+            ctx.fillStyle = "rgb(0,255,0)";
+
+            const textWidth = ctx.measureText(availCrafts[i]).width;
+            ctx.fillText(availCrafts[i].name, left, top + 16);
+            availCrafts[i].button.bounds = new Rectangle(left, top, textWidth, 16);
         }
         // health bar
         // drawRectangle(centerX - 105, canvas.height - 145, 210, 30, "rgba(0,0,0,0.25)");
@@ -809,7 +821,7 @@ window.onload = (function () {
             if (Math.abs(velocity.y) < 0.5) velocity.y = 0;
 
             if (velocity.componentSize() == 0) {
-                if (healingStart < 20) {
+                if (healingStart < 60) {
                     healingStart++;
                 } else {
                     healingStart = 0;
@@ -875,10 +887,10 @@ window.onload = (function () {
     function rectIntersect(rect1, rect2) {
         //console.log(rect1);
         //console.log(rect2);
-        if (rect1.x + rect1.width >= rect2.x &&
-            rect2.x + rect2.width >= rect1.x &&
-            rect1.y + rect1.height >= rect2.y &&
-            rect2.y + rect2.height >= rect1.y
+        if (rect1.x + rect1.width > rect2.x &&
+            rect2.x + rect2.width > rect1.x &&
+            rect1.y + rect1.height > rect2.y &&
+            rect2.y + rect2.height > rect1.y
         ) {
             if (devMode.AABB) {
                 //console.log("AABB");
@@ -891,13 +903,13 @@ window.onload = (function () {
     function circleIntersect(circle1, circle2) {
         const distanceBetween = new Vec(circle1.x - circle2.x, circle1.y - circle2.y);
         const sumRadius = circle1.radius + circle2.radius;
-        return distanceBetween.lengthSquared() <= sumRadius * sumRadius;
+        return distanceBetween.lengthSquared() < sumRadius * sumRadius;
     }
 
     function rectCircleIntersect(rect, circle) {
         const nearestPoint = new Vec(Math.max(rect.x, Math.min(rect.x + rect.width, circle.x)), Math.max(rect.y, Math.min(rect.y + rect.height, circle.y)));
         const distanceToCircle = new Vec(nearestPoint.x - circle.x, nearestPoint.y - circle.y);
-        return distanceToCircle.lengthSquared() <= circle.radius * circle.radius;
+        return distanceToCircle.lengthSquared() < circle.radius * circle.radius;
     }
 
     function resolveCollision(tile) {
@@ -1109,15 +1121,66 @@ window.onload = (function () {
         if (!hasAdded) {
             for (const emptySlot of inventory) {
                 if (!hasAdded && emptySlot.id === -1) {
-                    emptySlot.id = item.id;
-                    emptySlot.spriteId = item.spriteId;
-                    emptySlot.damage = item.damage;
-                    emptySlot.type = item.type;
-                    emptySlot.count += count;
+                    Object.assign(emptySlot, item);
+                    emptySlot.count = count;
                     hasAdded = true;
                 }
             }
         }
+        updateCrafts();
+        console.log(inventory);
+        return hasAdded;
+    }
+
+    function updateCrafts() {
+        availCrafts = [];
+        for (const craft of Object.values(crafts)) {
+            Object.assign(craft.button.bounds, new Rectangle(0,0,0,0));
+            let isValidCraft = true;
+            for (const item of craft.recipe) {
+                let itemInInventory = false;
+                for (const slot of inventory) {
+                    if (slot.id === item.id && slot.count >= item.count) {
+                        itemInInventory = true;
+                    }
+                }
+                if (!itemInInventory) {
+                    isValidCraft = false;
+                }
+            }
+            if (isValidCraft) {
+                availCrafts.push(craft);
+            }
+        }
+    }
+
+    function craft(craft) {
+        // guaranteed to have all ingredients.
+        const newInv = JSON.parse(JSON.stringify(inventory));
+        for (const ingredient of craft.recipe) {
+            const invItem = getFromInvById(newInv, ingredient.id);
+            invItem.count -= ingredient.count;
+            if (invItem.count === 0) {
+                Object.assign(invItem, Item.empty());
+            }
+        }
+        // if we have an empty slot.
+        if (getFromInvById(newInv, Item.empty().id) != null) {
+            Object.assign(inventory, newInv);
+            addToInventory(craft.item, 1);
+            setSlot(selectedSlot);
+        } else {
+            // some feedback message letting player know that their inventory is full
+        }
+    }
+
+    function getFromInvById(targetInventory, targetId) {
+        for (const item of targetInventory) {
+            if (targetId === item.id) {
+                return item;
+            }
+        }
+        return null;
     }
 
     function handleDamage(damageValue) {
