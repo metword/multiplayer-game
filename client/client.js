@@ -487,7 +487,7 @@ window.onload = (function () {
         tiles.push(new GameObject(11, "rigidtile", new Vec(1000, -400), 0, { shape: "circle", radius: 110, drop: { item: Item.iron(), gather: 2 } }));
 
         tiles.push(new GameObject(12, "rigidtile", new Vec(-400, 400), 0, { shape: "circle", radius: 70, drop: { item: Item.diamond(), gather: 3 } }));
-        tiles.push(new GameObject(13, "rigidtile", new Vec(-600, -499), 0, { shape: "circle", radius: 80, drop: { item: Item.diamond(), gather: 3 } }));
+        tiles.push(new GameObject(13, "rigidtile", new Vec(-600, -400), 0, { shape: "circle", radius: 80, drop: { item: Item.diamond(), gather: 3 } }));
         tiles.push(new GameObject(14, "rigidtile", new Vec(-800, 400), 0, { shape: "circle", radius: 85, drop: { item: Item.diamond(), gather: 3 } }));
         tiles.push(new GameObject(15, "rigidtile", new Vec(-1000, -400), 0, { shape: "circle", radius: 95, drop: { item: Item.diamond(), gather: 3 } }));
 
