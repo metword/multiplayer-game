@@ -1,15 +1,12 @@
 /**
  * TODO: 
- * RENDER PLAYER HEALTHBAR ON PLAYER SPRITE?
- * 0.5 SECOND ATTACK DELAY
- * RED OVER PLAYER IN INVINSIBILITY FRAME
  * BETTER MAP WITH RESOURCE TILES (PART 1 DONE?)
- * CRAFTING SYSTEM TO MAKE BETTER ITEMS BASED ON INVENTORY
  * PLAYER COLOR SELECTION
  * PLAYER INTERPOLATION (DOWN TO 20 SERVER TICKS PER SECOND TO SAVE RAM)
  * 
  * GAMEPLAY FEATURES:
  * CRAFTING TODO ADD CRAFTING SPRITES TO HUD INSTEAD OF TEXT...
+ * MOBS WITH AI TO ATTACK THE PLAYER
  * COORDINATE SYSTEM WHICH CAN BE TOGGLED
  * TOGGLE DEBUG FEATURES FROM INGAME
  * FIX JANKY DIAMOND SPRITE
@@ -20,10 +17,17 @@
  * 
  * FIXME:
  * CRASH ON RELOAD (ERROR X NOT DEFINED)
+ * 
+ * MAKE THE GAME A GAME:
+ * Map with water in the center, you spawn in the water with some invinsibility frames and then you must leave the center of the map to get better resources but you run out of water tho...
+ * Map with food. You need food every so often to survive.
+ * Map with KOTH in the center. Diamond resource is in the middle and strong mobs with ai guard it.
+ *  
  */
 
 window.onload = (function () {
 
+    
     class Vec {
         x;
         y;
@@ -271,37 +275,46 @@ window.onload = (function () {
         spriteId;
         damage;
         gather;
-        constructor(id, type = "item", count = 0, spriteId = id) {
+        constructor(id, spriteId = id, type = "item", count = 1, damage = 3, gather = 1) {
             this.id = id;
-            this.type = type;
-            this.count = count;
             this.spriteId = spriteId;
-            if (type === "sword") {
-                this.damage = (id - 12) * 4 + 10; // 10 damage + 4 per level
-                this.gather = 0;
-            } else if (type === "pickaxe") { // 5 damage  
-                this.damage = 5;
-                this.gather = id - 6;
-            } else { // 3 damage
-                this.damage = 3;
-                this.gather = 1;
-            }
+
+            this.type = type;
+
+            this.count = count;
+            this.damage = damage;
+            this.gather = gather;
         }
 
-        static empty() { return new Item(-1, "item", 0, undefined) }
+        static empty() { return new Item(-1, undefined, "item", 0) }
 
-        static wood(c) { return new Item(4, "item", c, undefined) }
-        static stone(c) { return new Item(5, "item", c, undefined) }
-        static iron(c) { return new Item(6, "item", c, undefined) }
-        static diamond(c) { return new Item(7, "item", c, undefined) }
-        static wood_pickaxe(c) { return new Item(8, "pickaxe", c, 4) }
-        static stone_pickaxe(c) { return new Item(9, "pickaxe", c, 5) }
-        static iron_pickaxe(c) { return new Item(10, "pickaxe", c, 6) }
-        static diamond_pickaxe(c) { return new Item(11, "pickaxe", c, 7) }
-        static wood_sword(c) { return new Item(12, "sword", c, 8) }
-        static stone_sword(c) { return new Item(13, "sword", c, 9) }
-        static iron_sword(c) { return new Item(14, "sword", c, 10) }
-        static diamond_sword(c) { return new Item(15, "sword", c, 11) }
+        static wood(c) { return new Item(0, undefined, "item", c) }
+        static stone(c) { return new Item(1, undefined, "item", c) }
+        static iron(c) { return new Item(2, undefined, "item", c) }
+        static diamond(c) { return new Item(3, undefined, "item", c) }
+        static wood_pickaxe(c) { return new Item(4, 4, "pickaxe", c, 5, 2) }
+        static stone_pickaxe(c) { return new Item(5, 5, "pickaxe", c, 5, 3) }
+        static iron_pickaxe(c) { return new Item(6, 6, "pickaxe", c, 5, 4) }
+        static diamond_pickaxe(c) { return new Item(7, 7, "pickaxe", c, 5, 5) }
+        static wood_sword(c) { return new Item(8, 8, "sword", c, 10, 0) }
+        static stone_sword(c) { return new Item(9, 9, "sword", c, 15, 0) }
+        static iron_sword(c) { return new Item(10, 10, "sword", c, 20, 0) }
+        static diamond_sword(c) { return new Item(11, 11, "sword", c, 25, 0) }
+    }
+
+    class Tile {
+        id;
+        name;
+        position;
+        shape;
+        drop;
+        constructor (id = -1, name, position, shape, drop) {
+            this.id = id;
+            this.name = name;
+            this.position = position;
+            this.shape = shape;
+            this.drop = drop;
+        }
     }
 
     class ClickableWidget {
@@ -373,14 +386,16 @@ window.onload = (function () {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     const playerSprites = new SpriteManager();
-    const gameSprites = new SpriteManager();
+    const inventorySprites = new SpriteManager();
+    const tileSprites = new SpriteManager();
     playerSprites.loadImage("/sprites1.png", 3, 4, 200, 200, 256);
-    gameSprites.loadImage("/sprites2.png", 4, 4, 256, 256, 2);
+    inventorySprites.loadImage("/inventory1.png", 4, 4, 256, 256, 2);
+    tileSprites.loadImage("/tiles1.png", 4, 4, 256, 256, 2);
 
     const renderer = new Renderer(ctx, playerSprites.spriteSheet);
     const mathHelper = new AngleHelper(65536);
 
-    //screens: game, chat, menu
+    //screens: game, chat, menu editor
     let screen = "menu";
     let chatInput = "";
 
@@ -402,12 +417,9 @@ window.onload = (function () {
     const boundingBoxFactor = 5; // box factor
 
     //THIS ENTITY
-    const client = new GameObject(undefined, "playerEntity", undefined, undefined, { heldItem: Item.empty(), attackFrame: -1, damageFrame: -1, messageQueue: [], health: 100 });
+    const client = new GameObject(undefined, "player", undefined, undefined, { heldItem: Item.empty(), attackFrame: -1, damageFrame: -1, messageQueue: [], health: 100 });
     const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
     let isAlive = false;
-
-    let serverEntities = [];
-    const tiles = [];
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
@@ -423,7 +435,6 @@ window.onload = (function () {
         iron_sword: { name: "Iron Sword", item: Item.iron_sword(), recipe: [Item.stone(80), Item.iron(50), Item.stone_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.iron_sword), "game") },
         diamond_sword: { name: "Diamond Sword", item: Item.diamond_sword(), recipe: [Item.iron(100), Item.diamond(60), Item.iron_sword(1)], button: new ClickableWidget(undefined, () => craft(crafts.diamond_sword), "game") },
     }
-
     const inventory = [Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty(), Item.empty()];
     let availCrafts = [];
 
@@ -441,17 +452,46 @@ window.onload = (function () {
         server.emit("join",);
     }, "menu");
 
+    let serverEntities = [];
+    const tiles = [];
+
+    //types of tiles:
+    //rigidtile (wall, can't walk through)
+    //belowtile (below the player)
+    //abovetile (above the player)
+    //watertile (water, can't breathe in it)
     createMap();
     function createMap() {
-        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(100, 100), 0, {shape:"circle", radius:100}));)
-        tiles.push(new GameObject(0, "rigidBody", new Vec(200, -100), 0, { shape: "circle", radius: 95, dropItem: Item.wood() }));
-        tiles.push(new GameObject(1, "rigidBody", new Vec(-400, 100), 0, { shape: "circle", radius: 70, dropItem: Item.stone() }));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(-200, -100), 0, { shape: "circle", radius: 90, dropItem: Item.iron() }));
-        tiles.push(new GameObject(2, "rigidBody", new Vec(800, -100), 0, { shape: "circle", radius: 90, dropItem: Item.iron() }));
-        tiles.push(new GameObject(3, "rigidBody", new Vec(200, 200), 0, { shape: "circle", radius: 90, dropItem: Item.diamond() }));
-        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(-200, 600), 0, { shape: "rectangle", width: 100, height: 100 }));
-        //tiles.push(new GameObject(undefined, "rigidBody", new Vec(0, -800), 0, { shape: "rectangle", width: 100, height: 100 }));
 
+        const cb = "#0daaf2";
+        //WALLS
+        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, -15000), 0, { shape: "rectangle", width: 2000, height: 30000, color: cb }));
+        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, -15000), 0, { shape: "rectangle", width: 30000, height: 2000, color: cb }));
+        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, 13000), 0, { shape: "rectangle", width: 30000, height: 2000, color: cb }));
+        tiles.push(new GameObject(-1, "rigidtile", new Vec(13000, -15000), 0, { shape: "rectangle", width: 2000, height: 30000, color: cb }));
+
+        //RESOURCE TILES
+        tiles.push(new GameObject(0, "rigidtile", new Vec(-1000, 200), 0, { shape: "circle", radius: 75, drop: { item: Item.wood(), gather: 0 } }));
+        tiles.push(new GameObject(1, "rigidtile", new Vec(-800, -200), 0, { shape: "circle", radius: 80, drop: { item: Item.wood(), gather: 0 } }));
+        tiles.push(new GameObject(2, "rigidtile", new Vec(-600, 200), 0, { shape: "circle", radius: 90, drop: { item: Item.wood(), gather: 0 } }));
+        tiles.push(new GameObject(3, "rigidtile", new Vec(-400, -200), 0, { shape: "circle", radius: 90, drop: { item: Item.wood(), gather: 0 } }));
+
+        tiles.push(new GameObject(4, "rigidtile", new Vec(400, 200), 0, { shape: "circle", radius: 60, drop: { item: Item.stone(), gather: 1 } }));
+        tiles.push(new GameObject(5, "rigidtile", new Vec(600, -200), 0, { shape: "circle", radius: 70, drop: { item: Item.stone(), gather: 1 } }));
+        tiles.push(new GameObject(6, "rigidtile", new Vec(800, 200), 0, { shape: "circle", radius: 80, drop: { item: Item.stone(), gather: 1 } }));
+        tiles.push(new GameObject(7, "rigidtile", new Vec(1000, -200), 0, { shape: "circle", radius: 85, drop: { item: Item.stone(), gather: 1 } }));
+
+        tiles.push(new GameObject(8, "rigidtile", new Vec(400, 400), 0, { shape: "circle", radius: 70, drop: { item: Item.iron(), gather: 2 } }));
+        tiles.push(new GameObject(9, "rigidtile", new Vec(600, -400), 0, { shape: "circle", radius: 85, drop: { item: Item.iron(), gather: 2 } }));
+        tiles.push(new GameObject(10, "rigidtile", new Vec(800, 400), 0, { shape: "circle", radius: 95, drop: { item: Item.iron(), gather: 2 } }));
+        tiles.push(new GameObject(11, "rigidtile", new Vec(1000, -400), 0, { shape: "circle", radius: 110, drop: { item: Item.iron(), gather: 2 } }));
+
+        tiles.push(new GameObject(12, "rigidtile", new Vec(-400, 400), 0, { shape: "circle", radius: 70, drop: { item: Item.diamond(), gather: 3 } }));
+        tiles.push(new GameObject(13, "rigidtile", new Vec(-600, -499), 0, { shape: "circle", radius: 80, drop: { item: Item.diamond(), gather: 3 } }));
+        tiles.push(new GameObject(14, "rigidtile", new Vec(-800, 400), 0, { shape: "circle", radius: 85, drop: { item: Item.diamond(), gather: 3 } }));
+        tiles.push(new GameObject(15, "rigidtile", new Vec(-1000, -400), 0, { shape: "circle", radius: 95, drop: { item: Item.diamond(), gather: 3 } }));
+
+        const tile1 = new Tile(-1, "water", new Vec(-1000, 200), { shape: "circle", radius: 75 }, { item: Item.wood(), gather: 0 });
         for (const tile of tiles) {
             if (tile.data.shape === "circle") {
                 tile.data.AABB = new Rectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2);
@@ -464,22 +504,32 @@ window.onload = (function () {
     // CLIENT GAME LOOP
     // IMPLEMENT VARIABLE TIME STEP
     function gameLoop() {
-
         updatePlayer();
         doCollisions();
         updateCamera();
         updateMouseAngle();
         fireMouseClicks();
         updateAttackStatus();
-        renderGame();
-
+        if (screen !== "editor") {
+            renderGame();
+        }
         if (screen === "game" || screen === "chat") {
             renderPlayerHud();
         } else if (screen === "menu") {
             renderMenuHud();
+        } else if (screen === "editor") {
+            renderEditor();
         }
     }
     setInterval(gameLoop, msPerFrame);
+
+    function renderEditor() {
+        clearCanvas();
+        const sideLength = Math.min(canvas.width, canvas.height) - 20;
+        const centerX = canvas.width * 0.5;
+        const centerY = canvas.height * 0.5;
+        drawRectangle(centerX - sideLength * 0.5, centerY - sideLength * 0.5, sideLength, sideLength, "black", 2);
+    } 
 
     function renderMenuHud() {
         const centerX = 0.5 * canvas.width;
@@ -508,11 +558,12 @@ window.onload = (function () {
         ctx.save();
         ctx.translate(-camera.x, -camera.y);
 
-        drawCircle(0, 0, 5, "black");
+        renderMap();
+
         //renders provided by the server
         for (const entity of serverEntities) {
             if (entity.id !== client.id) {
-                if (entity.name = "playerEntity") {
+                if (entity.name = "player") {
                     drawPlayer(entity);
                 } else if (entity.name = "arrow") {
 
@@ -533,6 +584,81 @@ window.onload = (function () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    function renderMap() {
+        const c0 = "#0dbdf2"; // "#00c5ff";
+        const c1 = "#0dc8f2"; // "#00d2ff";
+        const c2 = "#0dd4f2"; // "#00dfff";
+        const c3 = "#0de3f2"; // "#00ecff";
+        const is = "#ffe1ba";
+        const gr = "#ff0000";
+
+        drawRectangle(-15000, -15000, 30000, 30000, c0); //background
+
+        drawCircle(0, 0, 12400, c1); //main island 1
+        drawCircle(0, 0, 12200, c2); //main island 2
+        drawCircle(0, 0, 12100, c3); //main island 3
+        drawCircle(0, 0, 12000, is); //main island MAIN
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, 12100, 0, Math.PI * 2);
+        ctx.clip();
+        drawCircle(0, -9000, 5200, c3); //cutout main island 3
+        ctx.restore();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, 12200, 0, Math.PI * 2);
+        ctx.clip();
+        drawCircle(0, -9000, 5100, c2); //cutout main island 2
+        ctx.restore();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, 12400, 0, Math.PI * 2);
+        ctx.clip();
+        drawCircle(0, -9000, 5000, c1); //cutout main island 1
+        ctx.restore();
+        drawCircle(0, -9000, 4800, c0); //cutout main island 0
+
+        ctx.save();
+        ctx.beginPath()
+        ctx.arc(0, -9000, 4900, 0, Math.PI * 2);
+        ctx.clip();
+        drawRectangle(-700, -7000, 1400, 3500, c1); //bridge 1
+        ctx.restore();
+        drawCircle(0, -9500, 3400, c1); //small island 1
+
+
+        ctx.save();
+        ctx.beginPath()
+        ctx.arc(0, -9000, 5100, 0, Math.PI * 2);
+        ctx.clip();
+        drawRectangle(-500, -7000, 1000, 3500, c2); //bridge 2
+        ctx.restore();
+        drawCircle(0, -9500, 3200, c2); //small island 2
+
+        ctx.save()
+        ctx.beginPath();
+        ctx.arc(0, -9000, 5200, 0, Math.PI * 2);
+        ctx.clip();
+        drawRectangle(-400, -7000, 800, 3500, c3); //bridge 3
+        ctx.restore();
+        drawCircle(0, -9500, 3100, c3); //small island 3
+
+        drawRectangle(-300, -7000, 600, 3500, is); //bridge MAIN
+        drawCircle(0, -9500, 3000, is); //small island MAIN
+
+        //ctx.globalCompositeOperation = "saturation";
+        //for (let x = -15050; x < 15000; x += 100) {
+        //    drawRectangle(x, -15000, 5, 30000, gr);
+        //}
+        //for (let y = -15000; y < 15000; y += 100) {
+        //    drawRectangle(-15000, y, 30000, 5, gr);
+        //}
+        //ctx.globalCompositeOperation = "source-over";
+    }
+
     //ADD LAYERING
     function renderPlayerHud() {
         const centerX = canvas.width * 0.5;
@@ -546,7 +672,7 @@ window.onload = (function () {
 
             drawRectangle(slotLeft, slotTop, 100, 100, color);
             if (inventory[i] !== null) {
-                drawSprite(gameSprites.get(inventory[i].id).startAt(slotLeft + 50, slotTop + 50), ctx, gameSprites.spriteSheet);
+                drawSprite(inventorySprites.get(inventory[i].id).startAt(slotLeft + 50, slotTop + 50), ctx, inventorySprites.spriteSheet);
                 const count = inventory[i].count;
                 if (count > 1) {
                     ctx.font = "bold 32px sans-serif";
@@ -656,11 +782,19 @@ window.onload = (function () {
     function drawTile(tile) {
         let centerX = tile.position.x;
         let centerY = tile.position.y;
-        if (tile.data.type === "rectangle") {
+        if (tile.data.shape === "rectangle") {
             centerX += tile.data.width * 0.5;
             centerY += tile.data.health * 0.5;
         }
-        drawSprite(gameSprites.get(tile.id).startAt(centerX, centerY), ctx, gameSprites.spriteSheet);
+        drawSprite(tileSprites.get(tile.id).startAt(centerX, centerY), ctx, tileSprites.spriteSheet);
+
+        if (tile.id === -1) {
+            if (tile.data.shape === "circle") {
+                drawCircle(tile.position.x, tile.position.y, tile.data.radius, tile.data.color);
+            } else if (tile.data.shape === "rectangle") {
+                drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, tile.data.color);
+            }
+        }
         if (devMode.hitboxes) {
             if (tile.data.shape === "circle") {
                 drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
@@ -684,6 +818,19 @@ window.onload = (function () {
             ctx.lineWidth = 4;
             ctx.strokeStyle = strokeColor;
             ctx.stroke();
+        }
+    }
+
+    function drawArc(x, y, radius, startAngle, endAngle, counterclockwise, color, lineWidth = -1) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, startAngle, endAngle, counterclockwise);
+        if (lineWidth > 0) {
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = color;
+            ctx.fill();
         }
     }
 
@@ -878,8 +1025,10 @@ window.onload = (function () {
 
     function doCollisions() {
         for (const tile of tiles) {
-            if (rectIntersect(tile.data.AABB, clientAABB)) {
-                resolveCollision(tile);
+            if (tile.name === "rigidtile") {
+                if (rectIntersect(tile.data.AABB, clientAABB)) {
+                    resolveCollision(tile);
+                }
             }
         }
     }
@@ -1102,9 +1251,9 @@ window.onload = (function () {
     }
 
     function mineResource(tile, gatherValue) {
-        const countItems = gatherValue - tile.id;
+        const countItems = gatherValue - tile.data.drop.gather;
         if (countItems > 0) {
-            addToInventory(tile.data.dropItem, countItems);
+            addToInventory(tile.data.drop.item, countItems);
         }
     }
 
@@ -1135,7 +1284,7 @@ window.onload = (function () {
     function updateCrafts() {
         availCrafts = [];
         for (const craft of Object.values(crafts)) {
-            Object.assign(craft.button.bounds, new Rectangle(0,0,0,0));
+            Object.assign(craft.button.bounds, new Rectangle(0, 0, 0, 0));
             let isValidCraft = true;
             for (const item of craft.recipe) {
                 let itemInInventory = false;

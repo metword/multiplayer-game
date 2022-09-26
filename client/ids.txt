@@ -11,19 +11,32 @@
 10 iron sword
 11 diamond sword
 
-0 tree resource
-1 stone resource
-2 iron resource
-3 diamond resource
-4 wood item
-5 stone item
-6 iron item
-7 diamond item
-8 wood pickaxe item
-9 stone pickaxe item
-10 iron pickaxe item
-11 diamond pickaxe item
-12 wood sword item
-13 stone sword item
-14 iron sword item
-15 diamond sword item
+0 wood item
+1 stone item
+2 iron item
+3 diamond item
+4 wood pickaxe item
+5 stone pickaxe item
+6 iron pickaxe item
+7 diamond pickaxe item
+8 wood sword item
+9 stone sword item
+10 iron sword item
+11 diamond sword item
+
+0 tree resource r=75
+1 tree resource r=80
+2 tree resource r=90
+3 tree resource r=90
+4 stone resource r=60
+5 stone resource r=70
+6 stone resource r=75
+7 stone resource r=85
+8 iron resource r=70
+9 iron resource r=85
+10 iron resource r=95
+11 iron resource r=110
+12 diamond resource r=70
+13 diamond resource r=80
+14 diamond resource r=85
+15 diamond resource r=95
