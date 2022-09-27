@@ -474,7 +474,7 @@ window.onload = (function () {
     const mathHelper = new AngleHelper(65536);
 
     //screens: game, chat, menu, editor
-    let screen = "menu";
+    let screen = "editor";
     let chatInput = "";
 
     const velocity = new Vec(0, 0);
@@ -562,7 +562,7 @@ window.onload = (function () {
             y *= 30000 / editorSize;
             x -= 15000;
             y -= 15000;
-            if (entry[1].shape === "circle") {
+            if (entry[1].shape.shape === "circle") {
                 x += 30000 / editorSize * 0.5;
                 y += 30000 / editorSize * 0.5;
             }
@@ -651,11 +651,13 @@ window.onload = (function () {
             const squareX = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * editorSize);
             const squareY = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * editorSize);
 
-            if (editorTool !== Tile.empty()) {
+            
+            if (editorTool.name !== "empty") {
                 editorTiles[`x${squareX}y${squareY}`] = editorTool.startAt(squareX, squareY);
             } else {
                 delete editorTiles[`x${squareX}y${squareY}`];
             }
+            console.log(editorTiles);
         }
     }
 
