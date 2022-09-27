@@ -6,6 +6,7 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
+const fs = require("fs");
 
 //const { Pool } = require("pg");
 //const local = "postgresql://postgres:password@localhost:5432/postgres";
@@ -16,6 +17,16 @@ app.use(express.static(path.join(__dirname, "/client")));
 
 // Holds all entities
 const entities = [];
+
+const map = {}
+
+fs.readFile("map.json", (err, buff) => {
+    if (err) {
+        console.error(err);
+        return;
+    }
+    Object.assign(map, JSON.parse(buff.toString()));
+});
 
 // Start server
 server.listen(PORT, () => {
@@ -51,15 +62,14 @@ server.listen(PORT, () => {
 
 // Handle a socket connection request from web client
 io.on("connection", (client) => {
-
     // Creating the entity
     const thisEntity = {};
 
     // Setting the id for the entity
     const id = client.id;
 
-    // First ping to the client (can adde extra attributes later if needed!)
-    client.emit("init", { id: id });
+    // First ping to the client (can add extra attributes later if needed!)
+    client.emit("init", { id: id, map: map });
     client.on("init", client => {
         console.log(`Client connected with ID: \x1b[33m${client.id}\x1b[0m`);
     });
@@ -71,7 +81,7 @@ io.on("connection", (client) => {
     client.on("exit", () => {
         const index = entities.indexOf(thisEntity);
         if (index >= 0) {
-            entities.splice(index, 1);  
+            entities.splice(index, 1);
         }
     });
 
@@ -91,6 +101,19 @@ io.on("connection", (client) => {
 
     client.on("interact", packet => {
         io.to(packet.receiver).emit("interact", packet.data);
+    });
+
+    client.on("savemap", map => {
+        fs.writeFile("map.json", JSON.stringify(map), err => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+        });
+    });
+
+    client.on("loadmap", () => {
+        client.emit("loadmap", map);
     });
 });
 

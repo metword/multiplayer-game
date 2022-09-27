@@ -23,11 +23,17 @@
  * Map with food. You need food every so often to survive.
  * Map with KOTH in the center. Diamond resource is in the middle and strong mobs with ai guard it.
  *  
+ * 
+ * 
+ * TODO: MAKE SPRITE MANAGER HANDLE ALL RENDERING????
+ * TODO: CHANGE ALL TILES TO BE CREATED FROM TILE OBJECTS.
+ *                                                                                                                                                                                                                                                                 
+ * ;
  */
 
 window.onload = (function () {
 
-    
+
     class Vec {
         x;
         y;
@@ -89,7 +95,7 @@ window.onload = (function () {
         //ALL OTHER ENTITY SPECIFIC DATA IS HELD IN DATA
         data;
 
-        constructor(id = -1, name = error("param", "name"), position = new Vec(0, 0), angle = 0, data = error("param", "data")) {
+        constructor(id = -1, name = error("Name parameter is required!"), position = new Vec(0, 0), angle = 0, data = error("Data parameter is required!")) {
             // Defaults
             this.id = id;
             this.name = name;
@@ -249,20 +255,6 @@ window.onload = (function () {
         }
     }
 
-    class Renderer {
-        ctx;
-        spriteSheet;
-        constructor(ctx, spriteSheet) {
-            this.ctx = ctx;
-            this.spriteSheet = spriteSheet
-        }
-
-        drawSprite(sprite) {
-            this.ctx.drawImage(this.spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height,
-                sprite.translation.x - sprite.centerX, sprite.translation.y - sprite.centerY, sprite.width, sprite.height);
-        }
-    }
-
     function drawSprite(sprite, context, spriteSheet) {
         context.drawImage(spriteSheet, sprite.x, sprite.y, sprite.width, sprite.height,
             sprite.translation.x - sprite.centerX, sprite.translation.y - sprite.centerY, sprite.width, sprite.height);
@@ -308,12 +300,91 @@ window.onload = (function () {
         position;
         shape;
         drop;
-        constructor (id = -1, name, position, shape, drop) {
+        color;
+        AABB;
+        constructor(id = -1, name, position, shape, drop, color) {
             this.id = id;
             this.name = name;
             this.position = position;
             this.shape = shape;
             this.drop = drop;
+            this.color = color;
+            this.createAABB();
+        }
+
+        startAt(x, y) {
+            const tile = new Tile(this.id, this.name, new Vec(x, y), this.shape, this.drop, this.color);
+            tile.createAABB();
+            return tile;
+        }
+
+        draw() {
+            if (this.id !== -1) {
+                if (this.shape.shape === "circle") {
+                    drawSprite(tileSprites.get(this.id).startAt(this.position.x, this.position.y), ctx, tileSprites.spriteSheet);
+                } else if (this.shape.shape === "rectangle") {
+                    drawSprite(tileSprites.get(this.id).startAt(this.position.x + this.width * 0.5, this.position.y + this.height * 0.5), ctx, tileSprites.spriteSheet);
+                }
+            } else {
+                if (this.shape.shape === "circle") {
+                    drawCircle(this.position.x, this.position.y, this.shape.radius, this.color);
+                } else if (this.shape.shape === "rectangle") {
+                    drawRectangle(this.position.x, this.position.y, this.shape.width, this.shape.height, this.color);
+                }
+            }
+            if (devMode.hitboxes) {
+                if (this.shape.shape === "circle") {
+                    drawCircle(this.position.x, this.position.y, this.shape.radius, "red");
+                    if (devMode.AABB) {
+                        drawRectangle(this.position.x - this.shape.radius, this.position.y - this.shape.radius, this.shape.radius * 2, this.shape.radius * 2, "red", 2);
+                    }
+                } else if (this.shape.shape === "rectangle") {
+                    drawRectangle(this.position.x, this.position.y, this.shape.width, this.shape.height, "red");
+                }
+            }
+        }
+
+        createAABB() {
+            if (this.shape.shape === "circle") {
+                this.AABB = new Rectangle(this.position.x - this.shape.radius, this.position.y - this.shape.radius, this.shape.radius * 2, this.shape.radius * 2);
+            } else if (this.shape.shape === "rectangle") {
+                this.AABB = new Rectangle(this.position.x, this.position.y, this.shape.width, this.shape.height);
+            }
+        }
+
+        static empty() { return new Tile(-1, "empty", new Vec(0, 0), { shape: "rectangle", width: 0, height: 0 }, { item: Item.empty(), gather: 0 }, "#ffffff00") }
+
+        static water(x, y) { return new Tile(-1, "watertile", new Vec(x, y), { shape: "rectangle", width: 100, height: 100 }, { item: Item.empty(), gather: 0 }, "#0dbdf2") }
+
+        static wall(x, y, width, height, color) { return new Tile(-1, "rigidtile", new Vec(x, y), { shape: "rectangle", width: width, height: height }, { item: Item.empty(), gather: 0 }, color) }
+
+        static wood(x, y, id) {
+            if (id === 0) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 75 }, { item: Item.wood(), gather: 0 }, "#804000");
+            else if (id === 1) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.wood(), gather: 0 }, "#804000");
+            else if (id === 2) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0 }, "#804000");
+            else if (id === 3) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0 }, "#804000");
+            else error("ID must be between 0-3, inclusive");
+        }
+        static stone(x, y, id) {
+            if (id === 4) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 60 }, { item: Item.stone(), gather: 1 }, "#484848");
+            else if (id === 5) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.stone(), gather: 1 }, "#484848");
+            else if (id === 6) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.stone(), gather: 1 }, "#484848");
+            else if (id === 7) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.stone(), gather: 1 }, "#484848");
+            else error("ID must be between 4-7, inclusive");
+        }
+        static iron(x, y, id) {
+            if (id === 8) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
+            else if (id === 9) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
+            else if (id === 10) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
+            else if (id === 11) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 110 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
+            else error("ID must be between 8-11, inclusive");
+        }
+        static diamond(x, y, id) {
+            if (id === 12) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
+            else if (id === 13) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
+            else if (id === 14) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
+            else if (id === 15) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
+            else error("ID must be between 12-15, inclusive");
         }
     }
 
@@ -374,13 +445,21 @@ window.onload = (function () {
     }
 
     const mouse = {
-        mouseDown: false,
+        leftClickDown: false,
+        rightClickDown: false,
         clickCount: 0,
         clickCreation: 0,
     }
 
     const server = io();
     const devMode = { ray: false, movementent: false, AABB: false, hitboxes: false };
+
+    const cb = "#0daaf2"; //            border color
+    const c0 = "#0dbdf2"; // "#00c5ff"; base water color
+    const c1 = "#0dc8f2"; // "#00d2ff"; 
+    const c2 = "#0dd4f2"; // "#00dfff";
+    const c3 = "#0de3f2"; // "#00ecff";
+    const is = "#ffe1ba"; //            island color
 
     const canvas = document.querySelector("#canvas");
     const ctx = canvas.getContext("2d");
@@ -392,10 +471,9 @@ window.onload = (function () {
     inventorySprites.loadImage("/inventory1.png", 4, 4, 256, 256, 2);
     tileSprites.loadImage("/tiles1.png", 4, 4, 256, 256, 2);
 
-    const renderer = new Renderer(ctx, playerSprites.spriteSheet);
     const mathHelper = new AngleHelper(65536);
 
-    //screens: game, chat, menu editor
+    //screens: game, chat, menu, editor
     let screen = "menu";
     let chatInput = "";
 
@@ -419,11 +497,21 @@ window.onload = (function () {
     //THIS ENTITY
     const client = new GameObject(undefined, "player", undefined, undefined, { heldItem: Item.empty(), attackFrame: -1, damageFrame: -1, messageQueue: [], health: 100 });
     const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
+    const renderDist = new Rectangle(-canvas.width * 0.5, -canvas.height * 0.5, canvas.width, canvas.height);
     let isAlive = false;
 
     //to add items to hotbar we just need to do /push("item");
     let selectedSlot = 0;
     //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
+
+
+    const editorSize = 300;
+    const zoomOrigin = new Vec(0, 0);
+    const editorMouseStart = new Vec(0, 0);
+    let zoom = 1;
+    let editorTool = Tile.water(0, 0, 0);
+    const editorTiles = {}
+    const editorBounds = new Rectangle(0, 0, 0, 0);
 
     const crafts = {
         wood_pickaxe: { name: "Wood Pickaxe", item: Item.wood_pickaxe(), recipe: [Item.wood(20)], button: new ClickableWidget(undefined, () => craft(crafts.wood_pickaxe), "game") },
@@ -448,57 +536,49 @@ window.onload = (function () {
         client.data.damageFrame = -1;
         client.data.messageQueue = [];
         client.data.health = 100;
-
         server.emit("join",);
     }, "menu");
 
     let serverEntities = [];
-    const tiles = [];
+    const tilesAbove = [];
+    const tilesBelow = [];
 
     //types of tiles:
     //rigidtile (wall, can't walk through)
     //belowtile (below the player)
     //abovetile (above the player)
     //watertile (water, can't breathe in it)
-    createMap();
     function createMap() {
+        tilesAbove.push(Tile.wall(-15000, -15000, 2000, 30000, cb));
+        tilesAbove.push(Tile.wall(-15000, -15000, 30000, 2000, cb));
+        tilesAbove.push(Tile.wall(-15000, 13000, 30000, 2000, cb));
+        tilesAbove.push(Tile.wall(13000, -15000, 2000, 30000, cb));
 
-        const cb = "#0daaf2";
-        //WALLS
-        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, -15000), 0, { shape: "rectangle", width: 2000, height: 30000, color: cb }));
-        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, -15000), 0, { shape: "rectangle", width: 30000, height: 2000, color: cb }));
-        tiles.push(new GameObject(-1, "rigidtile", new Vec(-15000, 13000), 0, { shape: "rectangle", width: 30000, height: 2000, color: cb }));
-        tiles.push(new GameObject(-1, "rigidtile", new Vec(13000, -15000), 0, { shape: "rectangle", width: 2000, height: 30000, color: cb }));
+        console.log("CREATING MAP!");
+        for (const entry of Object.entries(editorTiles)) {
+            let x = parseInt(entry[0].substring(1, entry[0].indexOf("y")));
+            let y = parseInt(entry[0].substring(entry[0].indexOf("y") + 1));
+            x *= 30000 / editorSize;
+            y *= 30000 / editorSize;
+            x -= 15000;
+            y -= 15000;
+            if (entry[1].shape === "circle") {
+                x += 30000 / editorSize * 0.5;
+                y += 30000 / editorSize * 0.5;
+            }
 
-        //RESOURCE TILES
-        tiles.push(new GameObject(0, "rigidtile", new Vec(-1000, 200), 0, { shape: "circle", radius: 75, drop: { item: Item.wood(), gather: 0 } }));
-        tiles.push(new GameObject(1, "rigidtile", new Vec(-800, -200), 0, { shape: "circle", radius: 80, drop: { item: Item.wood(), gather: 0 } }));
-        tiles.push(new GameObject(2, "rigidtile", new Vec(-600, 200), 0, { shape: "circle", radius: 90, drop: { item: Item.wood(), gather: 0 } }));
-        tiles.push(new GameObject(3, "rigidtile", new Vec(-400, -200), 0, { shape: "circle", radius: 90, drop: { item: Item.wood(), gather: 0 } }));
+            let tile = Tile.empty();
+            Object.assign(tile, entry[1]);
+            tile = tile.startAt(x,y);
 
-        tiles.push(new GameObject(4, "rigidtile", new Vec(400, 200), 0, { shape: "circle", radius: 60, drop: { item: Item.stone(), gather: 1 } }));
-        tiles.push(new GameObject(5, "rigidtile", new Vec(600, -200), 0, { shape: "circle", radius: 70, drop: { item: Item.stone(), gather: 1 } }));
-        tiles.push(new GameObject(6, "rigidtile", new Vec(800, 200), 0, { shape: "circle", radius: 80, drop: { item: Item.stone(), gather: 1 } }));
-        tiles.push(new GameObject(7, "rigidtile", new Vec(1000, -200), 0, { shape: "circle", radius: 85, drop: { item: Item.stone(), gather: 1 } }));
-
-        tiles.push(new GameObject(8, "rigidtile", new Vec(400, 400), 0, { shape: "circle", radius: 70, drop: { item: Item.iron(), gather: 2 } }));
-        tiles.push(new GameObject(9, "rigidtile", new Vec(600, -400), 0, { shape: "circle", radius: 85, drop: { item: Item.iron(), gather: 2 } }));
-        tiles.push(new GameObject(10, "rigidtile", new Vec(800, 400), 0, { shape: "circle", radius: 95, drop: { item: Item.iron(), gather: 2 } }));
-        tiles.push(new GameObject(11, "rigidtile", new Vec(1000, -400), 0, { shape: "circle", radius: 110, drop: { item: Item.iron(), gather: 2 } }));
-
-        tiles.push(new GameObject(12, "rigidtile", new Vec(-400, 400), 0, { shape: "circle", radius: 70, drop: { item: Item.diamond(), gather: 3 } }));
-        tiles.push(new GameObject(13, "rigidtile", new Vec(-600, -400), 0, { shape: "circle", radius: 80, drop: { item: Item.diamond(), gather: 3 } }));
-        tiles.push(new GameObject(14, "rigidtile", new Vec(-800, 400), 0, { shape: "circle", radius: 85, drop: { item: Item.diamond(), gather: 3 } }));
-        tiles.push(new GameObject(15, "rigidtile", new Vec(-1000, -400), 0, { shape: "circle", radius: 95, drop: { item: Item.diamond(), gather: 3 } }));
-
-        const tile1 = new Tile(-1, "water", new Vec(-1000, 200), { shape: "circle", radius: 75 }, { item: Item.wood(), gather: 0 });
-        for (const tile of tiles) {
-            if (tile.data.shape === "circle") {
-                tile.data.AABB = new Rectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2);
-            } else if (tile.data.shape === "rectangle") {
-                tile.data.AABB = new Rectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height);
+            if (entry[1].name === "rigidtile") {
+                tilesAbove.push(tile);
+            } else {
+                tilesBelow.push(tile);
             }
         }
+        console.log(tilesBelow);
+        console.log(tilesAbove);
     }
 
     // CLIENT GAME LOOP
@@ -525,11 +605,59 @@ window.onload = (function () {
 
     function renderEditor() {
         clearCanvas();
-        const sideLength = Math.min(canvas.width, canvas.height) - 20;
-        const centerX = canvas.width * 0.5;
-        const centerY = canvas.height * 0.5;
-        drawRectangle(centerX - sideLength * 0.5, centerY - sideLength * 0.5, sideLength, sideLength, "black", 2);
-    } 
+
+        const sideLength = Math.max(0, Math.min(canvas.width, canvas.height) - 20);
+        const left = (canvas.width - sideLength) * 0.5;
+        const top = (canvas.height - sideLength) * 0.5;
+
+        const scaledLeft = left * zoom + zoomOrigin.x;
+        const scaledTop = top * zoom + zoomOrigin.y;
+        const scaledSideLength = sideLength * zoom;
+
+        editorBounds.x = scaledLeft;
+        editorBounds.y = scaledTop;
+        editorBounds.width = scaledSideLength;
+        editorBounds.height = scaledSideLength;
+
+        const centerX = scaledLeft + scaledSideLength * 0.5;
+        const centerY = scaledTop + scaledSideLength * 0.5;
+        drawRectangle(0, 0, canvas.width, canvas.height, c0);
+        drawCircle(centerX, centerY, scaledSideLength * 0.4, is);
+        drawCircle(centerX, centerY - 9 / 30 * scaledSideLength, 5 / 30 * scaledSideLength, c0);
+        drawCircle(centerX, centerY - 9.5 / 30 * scaledSideLength, 3 / 30 * scaledSideLength, is);
+        drawRectangle(centerX - 0.3 / 30 * scaledSideLength, centerY - 7 / 30 * scaledSideLength, 0.6 / 30 * scaledSideLength, 3.5 / 30 * scaledSideLength, is);
+        for (const entry of Object.entries(editorTiles)) {
+            const x = entry[0].substring(1, entry[0].indexOf("y"));
+            const y = entry[0].substring(entry[0].indexOf("y") + 1);
+            drawRectangle(scaledLeft + scaledSideLength / editorSize * x, scaledTop + scaledSideLength / editorSize * y, scaledSideLength / editorSize, scaledSideLength / editorSize, entry[1].color);
+        }
+        for (let x = 0; x <= editorSize; x++) {
+            drawRectangle(scaledLeft + scaledSideLength / editorSize * x, scaledTop, 1, scaledSideLength);
+        }
+        for (let y = 0; y <= editorSize; y++) {
+            drawRectangle(scaledLeft, scaledTop + scaledSideLength / editorSize * y, scaledSideLength, 1);
+        }
+    }
+
+    function editorAddTile() {
+        if (rectIntersect(mousePos, editorBounds)) {
+            const sideLength = Math.min(canvas.width, canvas.height) - 20;
+            const left = (canvas.width - sideLength) * 0.5;
+            const top = (canvas.height - sideLength) * 0.5;
+
+            const scaledLeft = left * zoom + zoomOrigin.x;
+            const scaledTop = top * zoom + zoomOrigin.y;
+
+            const squareX = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * editorSize);
+            const squareY = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * editorSize);
+
+            if (editorTool !== Tile.empty()) {
+                editorTiles[`x${squareX}y${squareY}`] = editorTool.startAt(squareX, squareY);
+            } else {
+                delete editorTiles[`x${squareX}y${squareY}`];
+            }
+        }
+    }
 
     function renderMenuHud() {
         const centerX = 0.5 * canvas.width;
@@ -559,7 +687,11 @@ window.onload = (function () {
         ctx.translate(-camera.x, -camera.y);
 
         renderMap();
-
+        for (const tile of tilesBelow) {
+            if (rectIntersect(tile.AABB, renderDist)) {
+                tile.draw();
+            }
+        }
         //renders provided by the server
         for (const entity of serverEntities) {
             if (entity.id !== client.id) {
@@ -573,8 +705,10 @@ window.onload = (function () {
         if (isAlive) {
             drawPlayer(client);
         }
-        for (const tile of tiles) {
-            drawTile(tile);
+        for (const tile of tilesAbove) {
+            if (rectIntersect(tile.AABB, renderDist)) {
+                tile.draw();
+            }
         }
 
         ctx.restore();
@@ -585,12 +719,6 @@ window.onload = (function () {
     }
 
     function renderMap() {
-        const c0 = "#0dbdf2"; // "#00c5ff";
-        const c1 = "#0dc8f2"; // "#00d2ff";
-        const c2 = "#0dd4f2"; // "#00dfff";
-        const c3 = "#0de3f2"; // "#00ecff";
-        const is = "#ffe1ba";
-        const gr = "#ff0000";
 
         drawRectangle(-15000, -15000, 30000, 30000, c0); //background
 
@@ -701,82 +829,84 @@ window.onload = (function () {
     }
 
     function drawPlayer(entity) {
-        let color = "rgb(0,255,0)";
-        //if (entity.id === client.id) {
-        //    color = "rgb(0,255,0)";
-        //} else {
-        //    color = "rgb(255,0,0)";
-        //}
+        if (entity.id !== undefined) {
+            let color = "rgb(0,255,0)";
+            //if (entity.id === client.id) {
+            //    color = "rgb(0,255,0)";
+            //} else {
+            //    color = "rgb(255,0,0)";
+            //}
 
-        //DRAWN RELATIVE TO THE PLAYERS POSITION
-        ctx.save();
-        ctx.translate(entity.position.x, entity.position.y);
+            //DRAWN RELATIVE TO THE PLAYERS POSITION
+            ctx.save();
+            ctx.translate(entity.position.x, entity.position.y);
 
-        //CHAT BUBBLE
-        drawChatBubble(entity.data.messageQueue, color);
+            //CHAT BUBBLE
+            drawChatBubble(entity.data.messageQueue, color);
 
-        //HEALTH BAR
-        drawHealthBar(entity.data.health);
+            //HEALTH BAR
+            drawHealthBar(entity.data.health);
 
-        //IF PLAYER IS DAMAGED
-        const bodyCanvas = document.createElement("canvas");
-        const bctx = bodyCanvas.getContext("2d");
-        const halfLength = 128;
-        bodyCanvas.width = halfLength * 2;
-        bodyCanvas.height = halfLength * 2
-        bctx.translate(halfLength, halfLength); // CENTER OF OUR CANVAS IS 100, 100 NOW
+            //IF PLAYER IS DAMAGED
+            const bodyCanvas = document.createElement("canvas");
+            const bctx = bodyCanvas.getContext("2d");
+            const halfLength = 128;
+            bodyCanvas.width = halfLength * 2;
+            bodyCanvas.height = halfLength * 2
+            bctx.translate(halfLength, halfLength); // CENTER OF OUR CANVAS IS 100, 100 NOW
 
-        //DRAW PLAYER BODY
-        //renderer.drawSprite(spriteManager.get(0));
-        //renderer.drawSprite(spriteManager.get(2));
-        drawSprite(playerSprites.get(0).startAt(), bctx, playerSprites.spriteSheet);
-        drawSprite(playerSprites.get(2).startAt(), bctx, playerSprites.spriteSheet);
+            //DRAW PLAYER BODY
+            //renderer.drawSprite(spriteManager.get(0));
+            //renderer.drawSprite(spriteManager.get(2));
+            drawSprite(playerSprites.get(0).startAt(), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(2).startAt(), bctx, playerSprites.spriteSheet);
 
-        //DRAW WEAPON
-        let item = entity.data.heldItem;
-        const animation = animate(item.type, entity.data.attackFrame);
-        const r = animation.r; // right hand vec
-        const l = animation.l; // left hand vec
-        const w = animation.w; // weapon vec
-        const a = animation.a; // angle
-        if (item.type === "pickaxe") {
-            //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
-            drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            //DRAW WEAPON
+            let item = entity.data.heldItem;
+            const animation = animate(item.type, entity.data.attackFrame);
+            const r = animation.r; // right hand vec
+            const l = animation.l; // left hand vec
+            const w = animation.w; // weapon vec
+            const a = animation.a; // angle
+            if (item.type === "pickaxe") {
+                //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y).rotate(entity.angle + a));
+                drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
 
-        } else if (item.type === "sword") {
-            //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
-            drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            } else if (item.type === "sword") {
+                //renderer.drawSprite(spriteManager.get(item.id).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a));
+                drawSprite(playerSprites.get(item.spriteId).startAt(w.x, w.y, Math.PI * 0.5).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            }
+
+            //DRAW HANDS
+            //renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
+            //renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
+            //renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
+            //renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
+            drawSprite(playerSprites.get(1).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(3).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(1).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+            drawSprite(playerSprites.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
+
+            const df = entity.data.damageFrame;
+
+            if (df >= 0 && df <= useDelay) {
+                bctx.globalCompositeOperation = "source-atop";
+                const halfDelay = useDelay * 0.5
+                const alpha = (-Math.abs(df - halfDelay) + halfDelay) / halfDelay;
+                bctx.fillStyle = `rgba(255,0,0,${alpha})`
+                bctx.fillRect(-halfLength, -halfLength, bodyCanvas.width, bodyCanvas.height);
+            }
+
+            ctx.drawImage(bodyCanvas, -halfLength, -halfLength);
+
+            ctx.globalCompositeOperation = "source-over";
+
+            //HITBOX
+            if (devMode.AABB) {
+                drawRectangle(clientAABB.width * -0.5, clientAABB.height * -0.5, clientAABB.width, clientAABB.height, "red", 2);
+            }
+            ctx.restore();
         }
-
-        //DRAW HANDS
-        //renderer.drawSprite(spriteManager.get(1).startAt(r.x, r.y).rotate(entity.angle + a));
-        //renderer.drawSprite(spriteManager.get(3).startAt(r.x, r.y).rotate(entity.angle + a));
-        //renderer.drawSprite(spriteManager.get(1).startAt(l.x, l.y).rotate(entity.angle + a));
-        //renderer.drawSprite(spriteManager.get(3).startAt(l.x, l.y).rotate(entity.angle + a));
-        drawSprite(playerSprites.get(1).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
-        drawSprite(playerSprites.get(3).startAt(r.x, r.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
-        drawSprite(playerSprites.get(1).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
-        drawSprite(playerSprites.get(3).startAt(l.x, l.y).rotate(entity.angle + a), bctx, playerSprites.spriteSheet);
-
-        const df = entity.data.damageFrame;
-
-        if (df >= 0 && df <= useDelay) {
-            bctx.globalCompositeOperation = "source-atop";
-            const halfDelay = useDelay * 0.5
-            const alpha = (-Math.abs(df - halfDelay) + halfDelay) / halfDelay;
-            bctx.fillStyle = `rgba(255,0,0,${alpha})`
-            bctx.fillRect(-halfLength, -halfLength, bodyCanvas.width, bodyCanvas.height);
-        }
-
-        ctx.drawImage(bodyCanvas, -halfLength, -halfLength);
-
-        ctx.globalCompositeOperation = "source-over";
-
-        //HITBOX
-        if (devMode.AABB) {
-            drawRectangle(clientAABB.width * -0.5, clientAABB.height * -0.5, clientAABB.width, clientAABB.height, "red", 2);
-        }
-        ctx.restore();
     }
 
     function drawTile(tile) {
@@ -795,16 +925,7 @@ window.onload = (function () {
                 drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, tile.data.color);
             }
         }
-        if (devMode.hitboxes) {
-            if (tile.data.shape === "circle") {
-                drawCircle(tile.position.x, tile.position.y, tile.data.radius, "red");
-                if (devMode.AABB) {
-                    drawRectangle(tile.position.x - tile.data.radius, tile.position.y - tile.data.radius, tile.data.radius * 2, tile.data.radius * 2, "red", 2);
-                }
-            } else if (tile.data.shape === "rectangle") {
-                drawRectangle(tile.position.x, tile.position.y, tile.data.width, tile.data.height, "red");
-            }
-        }
+
     }
 
     function drawCircle(x, y, radius, baseColor = "black", strokeColor) {
@@ -958,7 +1079,10 @@ window.onload = (function () {
             client.position.y += velocity.y;
             clientAABB.x = client.position.x - playerRadius * boundingBoxFactor;
             clientAABB.y = client.position.y - playerRadius * boundingBoxFactor;
-
+            renderDist.x = client.position.x - canvas.width * 0.5;
+            renderDist.y = client.position.y - canvas.height * 0.5;
+            renderDist.width = canvas.width;
+            renderDist.height = canvas.height;
 
             //drag
             velocity.x *= 0.75;
@@ -1024,9 +1148,9 @@ window.onload = (function () {
     }
 
     function doCollisions() {
-        for (const tile of tiles) {
+        for (const tile of tilesAbove) {
             if (tile.name === "rigidtile") {
-                if (rectIntersect(tile.data.AABB, clientAABB)) {
+                if (rectIntersect(tile.AABB, clientAABB)) {
                     resolveCollision(tile);
                 }
             }
@@ -1067,18 +1191,18 @@ window.onload = (function () {
         const tileX = tile.position.x;
         const tileY = tile.position.y;
 
-        if (tile.data.shape === "circle") {
+        if (tile.shape.shape === "circle") {
             const distanceBetween = new Vec(clientX - tileX, clientY - tileY);
-            const sumRadius = playerRadius + tile.data.radius;
+            const sumRadius = playerRadius + tile.shape.radius;
 
             if (distanceBetween.lengthSquared() <= sumRadius * sumRadius) { //collision detected
                 const hypo = distanceBetween.length();
                 client.position.x = tileX + distanceBetween.x / hypo * (sumRadius + 1);
                 client.position.y = tileY + distanceBetween.y / hypo * (sumRadius + 1);
             }
-        } else if (tile.data.shape === "rectangle") {
-            const width = tile.data.width;
-            const height = tile.data.height;
+        } else if (tile.shape.shape === "rectangle") {
+            const width = tile.shape.width;
+            const height = tile.shape.height;
             const nearestPoint = new Vec(Math.max(tileX, Math.min(tileX + width, clientX)), Math.max(tileY, Math.min(tileY + height, clientY)));
             const distanceToCircle = new Vec(nearestPoint.x - clientX, nearestPoint.y - clientY);
 
@@ -1104,7 +1228,7 @@ window.onload = (function () {
 
     function setSlot(index) { // Clears all animations sets mouseDown to false, if there is a buffer click we still fire attack 
         client.data.animation = -1;
-        mouse.mouseDown = false;
+        mouse.leftClickDown = false;
 
         if (index >= 0 && index < inventory.length) {
             selectedSlot = index
@@ -1115,16 +1239,8 @@ window.onload = (function () {
         return inventory[selectedSlot];
     }
 
-    function error(type, data) {
-        if (type === "param") {
-            throw new Error(`Parameter '${data}' is a required parameter for this function!`);
-        } else {
-            throw new Error();
-        }
-    }
-
     function fireMouseClicks() { //called every client tick
-        if (mouse.mouseDown || mouse.clickCount == 1) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
+        if (isAlive && (mouse.leftClickDown || mouse.clickCount == 1)) { // click count of 1 signifies a buffer click meaning we fire our click event regardless of mouse being down.
             const time = Date.now();
             if (mouse.clickCreation + useDelay < time) { // fires an input
                 mouse.clickCreation = time;
@@ -1233,15 +1349,15 @@ window.onload = (function () {
                 server.emit("interact", { receiver: entity.id, data: interactionPacket });
             }
         }
-        for (const tile of tiles) {
-            if (rectIntersect(tile.data.AABB, clientAABB)) {
+        for (const tile of tilesAbove) {
+            if (rectIntersect(tile.AABB, clientAABB)) {
 
-                if (tile.data.shape === "circle") {
-                    if (circleIntersect(attackCircle, new Circle(tile.position.x, tile.position.y, tile.data.radius))) {
+                if (tile.shape.shape === "circle") {
+                    if (circleIntersect(attackCircle, new Circle(tile.position.x, tile.position.y, tile.shape.radius))) {
                         mineResource(tile, client.data.heldItem.gather);
                     }
-                } else if (tile.data.shape === "rectangle") {
-                    if (rectCircleIntersect(tile.data.AABB, attackCircle)) {
+                } else if (tile.shape.shape === "rectangle") {
+                    if (rectCircleIntersect(tile.AABB, attackCircle)) {
                         mineResource(tile, client.data.heldItem.gather)
                     }
                 }
@@ -1251,9 +1367,9 @@ window.onload = (function () {
     }
 
     function mineResource(tile, gatherValue) {
-        const countItems = gatherValue - tile.data.drop.gather;
+        const countItems = gatherValue - tile.drop.gather;
         if (countItems > 0) {
-            addToInventory(tile.data.drop.item, countItems);
+            addToInventory(tile.drop.item, countItems);
         }
     }
 
@@ -1342,6 +1458,10 @@ window.onload = (function () {
         }
     }
 
+    function error(message) {
+        throw new Error(message);
+    }
+
     window.addEventListener("keydown", (key) => {
         if (screen === "chat") {
             switch (key.key) {
@@ -1380,7 +1500,7 @@ window.onload = (function () {
                 }
             }
         } else if (screen === "game") {
-            switch (key.key) {
+            switch (key.key.toLowerCase()) {
                 case "w": keyPresses.up = true;
                     break;
                 case "a": keyPresses.left = true;
@@ -1395,6 +1515,56 @@ window.onload = (function () {
                     nextSlot();
                 }
                     break;
+            }
+        } else if (screen === "editor") {
+            switch (key.key) {
+                case "1": {
+                    const id = editorTool.id;
+                    if (editorTool.id >= 0 && editorTool.id < 3) {
+                        editorTool.id++;
+                    } else {
+                        editorTool = Tile.wood(0, 0, 0);
+                    }
+                }
+                    break;
+                case "2": {
+                    if (editorTool.id >= 4 && editorTool.id < 7) {
+                        editorTool.id++;
+                    } else {
+                        editorTool = Tile.stone(0, 0, 4);
+                    }
+                }
+                    break;
+                case "3": {
+                    if (editorTool.id >= 8 && editorTool.id < 11) {
+                        editorTool.id++;
+                    } else {
+                        editorTool = Tile.iron(0, 0, 8);
+                    }
+                }
+                    break;
+                case "4": {
+                    if (editorTool.id >= 12 && editorTool.id < 15) {
+                        editorTool.id++;
+                    } else {
+                        editorTool = Tile.diamond(0, 0, 12);
+                    }
+                }
+                    break;
+                case "5": {
+                    editorTool = Tile.water(0, 0, 0);
+                }
+                    break;
+                case "d": {
+                    editorTool = Tile.empty();
+                }
+                    break;
+                case "s": {
+                    server.emit("savemap", editorTiles);
+                }
+                case "l": {
+                    server.emit("loadmap",);
+                }
             }
         }
     });
@@ -1424,37 +1594,86 @@ window.onload = (function () {
         canvas.width = window.innerWidth;
     });
 
-    window.addEventListener("mousemove", (mouse) => {
-        mousePos.x = mouse.clientX;
-        mousePos.y = mouse.clientY;
+    window.addEventListener("mousemove", (event) => {
+        mousePos.x = event.clientX;
+        mousePos.y = event.clientY;
+        if (screen === "editor") {
+            if (mouse.leftClickDown) {
+                editorAddTile();
+            }
+
+            if (mouse.rightClickDown) {
+                zoomOrigin.x += mousePos.x - editorMouseStart.x;
+                zoomOrigin.y += mousePos.y - editorMouseStart.y;
+                editorMouseStart.x = mousePos.x;
+                editorMouseStart.y = mousePos.y;
+            }
+        }
     });
 
     window.addEventListener("mousedown", (event) => {
-        if (isAlive) {
-            mouse.mouseDown = true;
+        if (event.button !== 2) {
+            mouse.leftClickDown = true;
             mouse.clickCount++;
+        } else {
+            mouse.rightClickDown = true;
+        }
+        if (screen === "editor") {
+            if (mouse.leftClickDown) {
+                editorAddTile();
+            }
+
+            if (mouse.rightClickDown) {
+                editorMouseStart.x = event.x;
+                editorMouseStart.y = event.y;
+            }
         }
     });
 
     window.addEventListener("mouseup", (event) => {
-        mouse.mouseDown = false;
+        mouse.leftClickDown = false;
+        mouse.rightClickDown = false;
+    });
+
+    window.addEventListener("wheel", (event) => {
+        const mouseX = event.clientX - zoomOrigin.x;
+        const mouseY = event.clientY - zoomOrigin.y;
+
+        const lastZoom = zoom;
+
+        zoom += event.deltaY * 0.01;
+        zoom = Math.max(1, zoom);
+
+        const newX = mouseX * (zoom / lastZoom);
+        const newY = mouseY * (zoom / lastZoom);
+
+        zoomOrigin.x += mouseX - newX;
+        zoomOrigin.y += mouseY - newY;
+
+        //console.log(`(${zoomOrigin.x}, ${zoomOrigin.y})`);
+    });
+
+    window.addEventListener('contextmenu', event => {
+        event.preventDefault();
     });
 
     server.on("init", (init) => {
         client.id = init.id;
+        Object.assign(editorTiles, init.map);
         console.log(`Joined with ID: \x1b[33m${client.id}\x1b[0m`);
         server.emit("init", client);
         if (isAlive) {
             server.emit("join",);
         }
+        createMap();
     });
 
     server.on("getclientdata", () => {
         server.emit("getclientdata", client);
     });
 
-    server.on("sendserverdata", (entitites) => {
-        serverEntities = entitites;
+    server.on("sendserverdata", (entities) => {
+        serverEntities = entities;
     });
 
     server.on("interact", (data) => {
@@ -1462,4 +1681,9 @@ window.onload = (function () {
             handleDamage(data.value);
         }
     });
+
+    //server.on("loadmap", (map) => {
+    //    Object.assign(editorTiles, map);
+    //    createMap();
+    //});
 })();
