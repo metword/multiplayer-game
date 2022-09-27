@@ -474,7 +474,7 @@ window.onload = (function () {
     const mathHelper = new AngleHelper(65536);
 
     //screens: game, chat, menu, editor
-    let screen = "editor";
+    let screen = "menu";
     let chatInput = "";
 
     const velocity = new Vec(0, 0);
