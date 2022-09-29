@@ -98,8 +98,8 @@ io.on("connection", (client) => {
 
     // On client disconnect
     client.on("disconnect", (reason) => {
-        console.log(`Client disconnected with ID: \x1b[33m${thisEntity.id}\x1b[0m`);
-        console.log(reason);
+        console.log(`Client disconnected with ID: \x1b[33m${thisEntity.id}.\x1b[0m Reason: \x1b[33m${reason}.\x1b[0m`);
+        
         const index = entities.indexOf(thisEntity);
         if (index >= 0) {
             entities.splice(index, 1);

@@ -503,7 +503,7 @@ window.onload = (function () {
     //THIS ENTITY
     const client = new GameObject(undefined, "player", undefined, undefined, { heldItem: Item.empty(), attackFrame: -1, damageFrame: -1, messageQueue: [], health: 100 });
     const clientAABB = new Rectangle(0, 0, playerRadius * 2 * boundingBoxFactor, playerRadius * 2 * boundingBoxFactor);
-    const renderDist = new Rectangle(-canvas.width * 0.5, -canvas.height * 0.5, canvas.width, canvas.height);
+    const renderDist = new Rectangle(-canvas.width * 0.75, -canvas.height * 0.75, canvas.width * 1.5, canvas.height * 1.5);
     let isAlive = false;
 
     //to add items to hotbar we just need to do /push("item");
@@ -556,7 +556,7 @@ window.onload = (function () {
     //abovetile (above the player)
     //watertile (water, can't breathe in it)
     let mapCreated = false;
-    function createMap() { 
+    function createMap() {
         if (!mapCreated) {
             //console.log("CREATING MAP!");
 
@@ -760,9 +760,15 @@ window.onload = (function () {
         ctx.translate(-camera.x, -camera.y);
 
         renderMap();
+        drawRectangle(0,200,100,100,"red");
+        drawRoundedRectangle(0,0,100,100,10,"red");
+        drawWater();
         for (const tile of tilesBelow) {
             if (rectIntersect(tile.AABB, renderDist)) {
-                tile.draw();
+                if (tile.name !== "watertile") {
+                    tile.draw();
+
+                }
             }
         }
         //renders provided by the server
@@ -858,6 +864,25 @@ window.onload = (function () {
         //    drawRectangle(-15000, y, 30000, 5, gr);
         //}
         //ctx.globalCompositeOperation = "source-over";
+    }
+
+    function drawWater() {
+        for (let radius = 48; radius >= 24; radius -= 12) {
+            //console.log("DRAW RADIUS: " + radius);
+            let color = c3;
+            if (radius === 36) {
+                color = c1;
+            }
+            if (radius === 24) {
+                color = c0;
+            }
+            for (const tile of tilesBelow) {
+                //console.log(tile.name);
+                if (tile.name === "watertile" && rectIntersect(tile.AABB, renderDist)) {
+                    drawRoundedRectangle(tile.position.x, tile.position.y, 100, 100, radius, color);
+                }
+            }
+        }
     }
 
     //ADD LAYERING
@@ -1041,6 +1066,20 @@ window.onload = (function () {
         }
     }
 
+    function drawRoundedRectangle(x, y, width, height, radius, color = "black") {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(x, y, radius, Math.PI, Math.PI * 1.5);
+        ctx.lineTo(x + width, y - radius);
+        ctx.arc(x + width, y, radius, Math.PI * 1.5, 0);
+        ctx.lineTo(x + width + radius, y + height);
+        ctx.arc(x + width, y + height, radius, 0, Math.PI * 0.5);
+        ctx.lineTo(x, y + height + radius);
+        ctx.arc(x, y + height, radius, Math.PI * 0.5, Math.PI);
+        ctx.lineTo(x - radius, y);
+        ctx.fill();
+    }
+
     //we'll have to make a function similar to breakrenderedchatmessages...
     function drawChatBubble(messages, color) {
         ctx.font = 'bold 16px sans-serif';
@@ -1152,10 +1191,10 @@ window.onload = (function () {
             client.position.y += velocity.y;
             clientAABB.x = client.position.x - playerRadius * boundingBoxFactor;
             clientAABB.y = client.position.y - playerRadius * boundingBoxFactor;
-            renderDist.x = client.position.x - canvas.width * 0.5;
-            renderDist.y = client.position.y - canvas.height * 0.5;
-            renderDist.width = canvas.width;
-            renderDist.height = canvas.height;
+            renderDist.x = client.position.x - canvas.width * 0.75;
+            renderDist.y = client.position.y - canvas.height * 0.75;
+            renderDist.width = canvas.width * 1.5;
+            renderDist.height = canvas.height * 1.5;
 
             //drag
             velocity.x *= 0.75;
