@@ -17,18 +17,17 @@
  * 
  * FIXME:
  * CRASH ON RELOAD (ERROR X NOT DEFINED)
+ * CIRCLE TILES ARE NOT THE PROPER RADIUS
  * 
  * MAKE THE GAME A GAME:
  * Map with water in the center, you spawn in the water with some invinsibility frames and then you must leave the center of the map to get better resources but you run out of water tho...
  * Map with food. You need food every so often to survive.
  * Map with KOTH in the center. Diamond resource is in the middle and strong mobs with ai guard it.
- *  
- * 
- * 
- * TODO: MAKE SPRITE MANAGER HANDLE ALL RENDERING????
- * TODO: CHANGE ALL TILES TO BE CREATED FROM TILE OBJECTS.
- *                                                                                                                                                                                                                                                                 
- * ;
+ *                                                                                                                                                                                                                                                         
+ * SCREEN CLASS TO HOLD ALL SCREENS
+ * UNPACK SCREEN - REMOVE EVENT LISTENERS
+ * UNPACK BUTTONS - REMOVE EVENT LISTENERS OF EACH OF THE BUTTONS
+ * EACH SCREEN WILL HAVE ITS OWN RENDER METHOD AND CAN BE CALLED FROM THE CURRENT SCREEN CLASS
  */
 
 window.onload = (function () {
@@ -319,7 +318,7 @@ window.onload = (function () {
         }
 
         draw() {
-            if (this.id !== -1) {
+            if (this.id >= 0) {
                 if (this.shape.shape === "circle") {
                     drawSprite(tileSprites.get(this.id).startAt(this.position.x, this.position.y), ctx, tileSprites.spriteSheet);
                 } else if (this.shape.shape === "rectangle") {
@@ -354,7 +353,7 @@ window.onload = (function () {
 
         static empty() { return new Tile(-1, "empty", new Vec(0, 0), { shape: "rectangle", width: 0, height: 0 }, { item: Item.empty(), gather: 0 }, "#ffffff00") }
 
-        static water(x, y) { return new Tile(-1, "watertile", new Vec(x, y), { shape: "rectangle", width: 100, height: 100 }, { item: Item.empty(), gather: 0 }, "#0dbdf2") }
+        static water(x, y) { return new Tile(-2, "watertile", new Vec(x, y), { shape: "rectangle", width: 100, height: 100 }, { item: Item.empty(), gather: 0 }, "#0dbdf2") }
 
         static wall(x, y, width, height, color) { return new Tile(-1, "rigidtile", new Vec(x, y), { shape: "rectangle", width: width, height: height }, { item: Item.empty(), gather: 0 }, color) }
 
@@ -435,13 +434,20 @@ window.onload = (function () {
         }
     }
 
+    //TODO CLASSES FOR EACH SCREEN
+    class EditorScreen {
+
+        constructor() {
+
+        }
+    }
+
     const keyPresses = {
         up: false,
         left: false,
         down: false,
         right: false,
         shift: false,
-
     }
 
     const mouse = {
@@ -504,12 +510,13 @@ window.onload = (function () {
     let selectedSlot = 0;
     //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
 
-
+    const editor = new EditorScreen();
     const editorSize = 300;
     const zoomOrigin = new Vec(0, 0);
     const editorMouseStart = new Vec(0, 0);
     let zoom = 1;
     let editorTool = Tile.water(0, 0, 0);
+    let editorFill = false;
     const editorTiles = {}
     const editorBounds = new Rectangle(0, 0, 0, 0);
 
@@ -548,37 +555,40 @@ window.onload = (function () {
     //belowtile (below the player)
     //abovetile (above the player)
     //watertile (water, can't breathe in it)
-    function createMap() {
-        tilesAbove.push(Tile.wall(-15000, -15000, 2000, 30000, cb));
-        tilesAbove.push(Tile.wall(-15000, -15000, 30000, 2000, cb));
-        tilesAbove.push(Tile.wall(-15000, 13000, 30000, 2000, cb));
-        tilesAbove.push(Tile.wall(13000, -15000, 2000, 30000, cb));
+    let mapCreated = false;
+    function createMap() { 
+        if (!mapCreated) {
+            //console.log("CREATING MAP!");
 
-        console.log("CREATING MAP!");
-        for (const entry of Object.entries(editorTiles)) {
-            let x = parseInt(entry[0].substring(1, entry[0].indexOf("y")));
-            let y = parseInt(entry[0].substring(entry[0].indexOf("y") + 1));
-            x *= 30000 / editorSize;
-            y *= 30000 / editorSize;
-            x -= 15000;
-            y -= 15000;
-            if (entry[1].shape.shape === "circle") {
-                x += 30000 / editorSize * 0.5;
-                y += 30000 / editorSize * 0.5;
+            tilesAbove.push(Tile.wall(-15000, -15000, 2000, 30000, cb));
+            tilesAbove.push(Tile.wall(-15000, -15000, 30000, 2000, cb));
+            tilesAbove.push(Tile.wall(-15000, 13000, 30000, 2000, cb));
+            tilesAbove.push(Tile.wall(13000, -15000, 2000, 30000, cb));
+
+            for (const entry of Object.entries(editorTiles)) {
+                let x = parseInt(entry[0].substring(1, entry[0].indexOf("y")));
+                let y = parseInt(entry[0].substring(entry[0].indexOf("y") + 1));
+                x *= 30000 / editorSize;
+                y *= 30000 / editorSize;
+                x -= 15000;
+                y -= 15000;
+                if (entry[1].shape.shape === "circle") {
+                    x += 30000 / editorSize * 0.5;
+                    y += 30000 / editorSize * 0.5;
+                }
+
+                let tile = Tile.empty();
+                Object.assign(tile, entry[1]);
+                tile = tile.startAt(x, y);
+
+                if (entry[1].name === "rigidtile") {
+                    tilesAbove.push(tile);
+                } else {
+                    tilesBelow.push(tile);
+                }
             }
-
-            let tile = Tile.empty();
-            Object.assign(tile, entry[1]);
-            tile = tile.startAt(x,y);
-
-            if (entry[1].name === "rigidtile") {
-                tilesAbove.push(tile);
-            } else {
-                tilesBelow.push(tile);
-            }
+            mapCreated = true;
         }
-        console.log(tilesBelow);
-        console.log(tilesAbove);
     }
 
     // CLIENT GAME LOOP
@@ -603,6 +613,7 @@ window.onload = (function () {
     }
     setInterval(gameLoop, msPerFrame);
 
+    // PART OF LEVEL EDITOR!!!!!!!!!!!!
     function renderEditor() {
         clearCanvas();
 
@@ -648,18 +659,78 @@ window.onload = (function () {
             const scaledLeft = left * zoom + zoomOrigin.x;
             const scaledTop = top * zoom + zoomOrigin.y;
 
-            const squareX = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * editorSize);
-            const squareY = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * editorSize);
+            const xPos = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * editorSize);
+            const yPos = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * editorSize);
 
-            
+
             if (editorTool.name !== "empty") {
-                editorTiles[`x${squareX}y${squareY}`] = editorTool.startAt(squareX, squareY);
+                if (editorFill) {
+                    editorFillTiles(getTile(xPos, yPos), xPos, yPos, editorTool);
+                } else {
+                    setTile(xPos, yPos, editorTool.startAt(xPos, yPos));
+                }
             } else {
-                delete editorTiles[`x${squareX}y${squareY}`];
+                deleteTile(xPos, yPos);
             }
-            console.log(editorTiles);
         }
     }
+
+    function editorFillTiles(tyleTypeToFill, tileX, tileY, newTile) {
+        // set the tile
+        //console.log(newTile);
+        //console.log(Tile.empty());
+        if (newTile !== Tile.empty()) {
+            setTile(tileX, tileY, newTile.startAt(tileX, tileY));
+        } else {
+            deleteTile(tileX, tileY);
+        }
+        //console.log("TO FILL:")
+        //console.log(`CLICKED: (${tileX}, ${tileY})`)
+        //console.log("TO FILL ALL:");
+        //console.log(tyleTypeToFill);
+        //console.log("ID: " + tyleTypeToFill.id);
+        //console.log("TILE LEFT:");
+        //const tf = tileX + 1 < editorSize && getTile(tileX + 1, tileY).id === tyleTypeToFill.id;
+        if (tileX + 1 < editorSize && getTile(tileX + 1, tileY).id === tyleTypeToFill.id) {
+            //console.log("RIGHT ONE ID: " + getTile(tileX + 1, tileY).id + " FILL ID: " + tyleTypeToFill.id);
+            //console.log("FILLING (" + (tileX + 1) + ", " + tileY+ ")");
+            //console.log(getTile(tileX + 1, tileY).id);
+
+            editorFillTiles(tyleTypeToFill, tileX + 1, tileY, newTile);
+        }
+        if (tileY + 1 < editorSize && getTile(tileX, tileY + 1).id === tyleTypeToFill.id) {
+            //console.log("FILLING (" + tileX + ", " + (tileY+1)+ ")");
+            //console.log(getTile(tileX, tileY + 1).id);
+            editorFillTiles(tyleTypeToFill, tileX, tileY + 1, newTile);
+        }
+        if (tileX - 1 >= 0 && getTile(tileX - 1, tileY).id === tyleTypeToFill.id) {
+            //console.log("FILLING (" + (tileX - 1) + ", " + tileY+ ")");
+            //console.log(getTile(tileX - 1, tileY).id);
+            editorFillTiles(tyleTypeToFill, tileX - 1, tileY, newTile);
+        }
+        if (tileY - 1 >= 0 && getTile(tileX, tileY - 1).id === tyleTypeToFill.id) {
+            //console.log("FILLING (" + tileX + ", " + (tileY - 1)+ ")");
+            //console.log(getTile(tileX, tileY - 1).id);
+            editorFillTiles(tyleTypeToFill, tileX, tileY - 1, newTile);
+        }
+    }
+
+    function getTile(row, col) {
+        const tile = editorTiles[`x${row}y${col}`];
+        if (tile === undefined) {
+            return Tile.empty();
+        }
+        return tile;
+    }
+
+    function setTile(row, col, tile) {
+        editorTiles[`x${row}y${col}`] = tile;
+    }
+
+    function deleteTile(row, col) {
+        delete editorTiles[`x${row}y${col}`];
+    }
+    // PART OF LEVEL EDITOR!!!!!!!!!
 
     function renderMenuHud() {
         const centerX = 0.5 * canvas.width;
@@ -1521,36 +1592,43 @@ window.onload = (function () {
         } else if (screen === "editor") {
             switch (key.key) {
                 case "1": {
-                    const id = editorTool.id;
-                    if (editorTool.id >= 0 && editorTool.id < 3) {
-                        editorTool.id++;
+                    let id = editorTool.id;
+                    if (id >= 0 && id < 3) {
+                        id++;
                     } else {
-                        editorTool = Tile.wood(0, 0, 0);
+                        id = 0;
                     }
+                    editorTool = Tile.wood(0, 0, id);
                 }
                     break;
                 case "2": {
-                    if (editorTool.id >= 4 && editorTool.id < 7) {
-                        editorTool.id++;
+                    let id = editorTool.id;
+                    if (id >= 4 && id < 7) {
+                        id++;
                     } else {
-                        editorTool = Tile.stone(0, 0, 4);
+                        id = 4;
                     }
+                    editorTool = Tile.stone(0, 0, id);
                 }
                     break;
                 case "3": {
-                    if (editorTool.id >= 8 && editorTool.id < 11) {
-                        editorTool.id++;
+                    let id = editorTool.id;
+                    if (id >= 8 && id < 11) {
+                        id++;
                     } else {
-                        editorTool = Tile.iron(0, 0, 8);
+                        id = 8;
                     }
+                    editorTool = Tile.iron(0, 0, id);
                 }
                     break;
                 case "4": {
-                    if (editorTool.id >= 12 && editorTool.id < 15) {
-                        editorTool.id++;
+                    let id = editorTool.id;
+                    if (id >= 12 && id < 15) {
+                        id++;
                     } else {
-                        editorTool = Tile.diamond(0, 0, 12);
+                        id = 12;
                     }
+                    editorTool = Tile.diamond(0, 0, id);
                 }
                     break;
                 case "5": {
@@ -1562,10 +1640,17 @@ window.onload = (function () {
                 }
                     break;
                 case "s": {
+                    console.log("SAVING MAP...");
                     server.emit("savemap", editorTiles);
                 }
+                    break;
                 case "l": {
+                    console.log("LOADING MAP...");
                     server.emit("loadmap",);
+                }
+                    break;
+                case "g": {
+                    editorFill = !editorFill;
                 }
             }
         }
@@ -1684,8 +1769,8 @@ window.onload = (function () {
         }
     });
 
-    //server.on("loadmap", (map) => {
-    //    Object.assign(editorTiles, map);
-    //    createMap();
-    //});
+    server.on("loadmap", (map) => {
+        Object.assign(editorTiles, map);
+        //createMap();
+    });
 })();

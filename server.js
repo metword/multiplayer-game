@@ -1,11 +1,11 @@
 const express = require("express");
 const path = require("path");
 const http = require("http");
-const PORT = process.env.PORT || 3000;
-const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server);
+const PORT = process.env.PORT || 3000;
+const socketio = require("socket.io");
+const io = socketio(server, {maxHttpBufferSize: 1e8});
 const fs = require("fs");
 
 //const { Pool } = require("pg");
@@ -26,6 +26,17 @@ fs.readFile("map.json", (err, buff) => {
         return;
     }
     Object.assign(map, JSON.parse(buff.toString()));
+    //for (const tile of Object.values(map)) {
+    //    if (tile.name === "watertile") {
+    //        tile.id = -2;
+    //    }
+    //}
+    //fs.writeFile("map.json", JSON.stringify(map), err => {
+    //    if (err) {
+    //        console.error(err);
+    //        return;
+    //    }
+    //});
 });
 
 // Start server
@@ -86,8 +97,9 @@ io.on("connection", (client) => {
     });
 
     // On client disconnect
-    client.on("disconnect", () => {
+    client.on("disconnect", (reason) => {
         console.log(`Client disconnected with ID: \x1b[33m${thisEntity.id}\x1b[0m`);
+        console.log(reason);
         const index = entities.indexOf(thisEntity);
         if (index >= 0) {
             entities.splice(index, 1);
