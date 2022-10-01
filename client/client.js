@@ -358,31 +358,31 @@ window.onload = (function () {
         static wall(x, y, width, height, color) { return new Tile(-1, "rigidtile", new Vec(x, y), { shape: "rectangle", width: width, height: height }, { item: Item.empty(), gather: 0 }, color) }
 
         static wood(x, y, id) {
-            if (id === 0) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 75 }, { item: Item.wood(), gather: 0 }, "#804000");
-            else if (id === 1) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.wood(), gather: 0 }, "#804000");
-            else if (id === 2) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0 }, "#804000");
-            else if (id === 3) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0 }, "#804000");
+            if (id === 0) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 75 }, { item: Item.wood(), gather: 0, capacity: 12 }, "#7fff7f");
+            else if (id === 1) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.wood(), gather: 0, capacity: 16  }, "#5fff5f");
+            else if (id === 2) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0, capacity: 20  }, "#3fff3f");
+            else if (id === 3) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 90 }, { item: Item.wood(), gather: 0, capacity: 24  }, "#1fff1f");
             else error("ID must be between 0-3, inclusive");
         }
         static stone(x, y, id) {
-            if (id === 4) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 60 }, { item: Item.stone(), gather: 1 }, "#484848");
-            else if (id === 5) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.stone(), gather: 1 }, "#484848");
-            else if (id === 6) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.stone(), gather: 1 }, "#484848");
-            else if (id === 7) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.stone(), gather: 1 }, "#484848");
+            if (id === 4) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 60 }, { item: Item.stone(), gather: 1, capacity: 10 }, "#484848");
+            else if (id === 5) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.stone(), gather: 1, capacity: 14 }, "#484848");
+            else if (id === 6) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.stone(), gather: 1, capacity: 18 }, "#484848");
+            else if (id === 7) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.stone(), gather: 1, capacity: 22 }, "#484848");
             else error("ID must be between 4-7, inclusive");
         }
         static iron(x, y, id) {
-            if (id === 8) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
-            else if (id === 9) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
-            else if (id === 10) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
-            else if (id === 11) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 110 }, { item: Item.iron(), gather: 2 }, "#cbcbcb");
+            if (id === 8) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.iron(), gather: 2, capacity: 9 }, "#cbcbcb");
+            else if (id === 9) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.iron(), gather: 2, capacity: 12 }, "#cbcbcb");
+            else if (id === 10) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.iron(), gather: 2, capacity: 15 }, "#cbcbcb");
+            else if (id === 11) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 110 }, { item: Item.iron(), gather: 2, capacity: 18 }, "#cbcbcb");
             else error("ID must be between 8-11, inclusive");
         }
         static diamond(x, y, id) {
-            if (id === 12) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
-            else if (id === 13) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
-            else if (id === 14) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
-            else if (id === 15) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.diamond(), gather: 3 }, "#00eaff");
+            if (id === 12) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 70 }, { item: Item.diamond(), gather: 3, capacity: 8 }, "#00eaff");
+            else if (id === 13) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 80 }, { item: Item.diamond(), gather: 3, capacity: 10 }, "#00eaff");
+            else if (id === 14) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 85 }, { item: Item.diamond(), gather: 3, capacity: 12 }, "#00eaff");
+            else if (id === 15) return new Tile(id, "rigidtile", new Vec(x, y), { shape: "circle", radius: 95 }, { item: Item.diamond(), gather: 3,capacity: 14 }, "#00eaff");
             else error("ID must be between 12-15, inclusive");
         }
     }
@@ -510,8 +510,12 @@ window.onload = (function () {
     let selectedSlot = 0;
     //const inventory = [Item.empty(), new Item(8, "sword"), new Item(9, "sword"), new Item(10, "sword"), new Item(11, "sword"), new Item(5, "pickaxe", 9999)];
 
+    
     const editor = new EditorScreen();
-    const editorSize = 300;
+    const mapSize = 15000;
+    const mapSizeHalf = mapSize * 0.5;
+    const numTiles = 150;
+    const tileSize = mapSize / numTiles;
     const zoomOrigin = new Vec(0, 0);
     const editorMouseStart = new Vec(0, 0);
     let zoom = 1;
@@ -560,27 +564,27 @@ window.onload = (function () {
         if (!mapCreated) {
             //console.log("CREATING MAP!");
 
-            tilesAbove.push(Tile.wall(-15000, -15000, 2000, 30000, cb));
-            tilesAbove.push(Tile.wall(-15000, -15000, 30000, 2000, cb));
-            tilesAbove.push(Tile.wall(-15000, 13000, 30000, 2000, cb));
-            tilesAbove.push(Tile.wall(13000, -15000, 2000, 30000, cb));
+            const wallWidth = 1000;
+
+            tilesAbove.push(Tile.wall(-mapSizeHalf, -mapSizeHalf, wallWidth, mapSize, cb));
+            tilesAbove.push(Tile.wall(-mapSizeHalf, -mapSizeHalf, mapSize, wallWidth, cb));
+            tilesAbove.push(Tile.wall(-mapSizeHalf, mapSizeHalf - wallWidth, mapSize, wallWidth, cb));
+            tilesAbove.push(Tile.wall(mapSizeHalf - wallWidth, -mapSizeHalf, wallWidth, mapSize, cb));
 
             for (const entry of Object.entries(editorTiles)) {
                 let x = parseInt(entry[0].substring(1, entry[0].indexOf("y")));
                 let y = parseInt(entry[0].substring(entry[0].indexOf("y") + 1));
-                x *= 30000 / editorSize;
-                y *= 30000 / editorSize;
-                x -= 15000;
-                y -= 15000;
+                x *= tileSize;
+                y *= tileSize;
+                x -= mapSizeHalf;
+                y -= mapSizeHalf;
                 if (entry[1].shape.shape === "circle") {
-                    x += 30000 / editorSize * 0.5;
-                    y += 30000 / editorSize * 0.5;
+                    x += tileSize * 0.5;
+                    y += tileSize * 0.5;
                 }
-
                 let tile = Tile.empty();
                 Object.assign(tile, entry[1]);
                 tile = tile.startAt(x, y);
-
                 if (entry[1].name === "rigidtile") {
                     tilesAbove.push(tile);
                 } else {
@@ -640,13 +644,13 @@ window.onload = (function () {
         for (const entry of Object.entries(editorTiles)) {
             const x = entry[0].substring(1, entry[0].indexOf("y"));
             const y = entry[0].substring(entry[0].indexOf("y") + 1);
-            drawRectangle(scaledLeft + scaledSideLength / editorSize * x, scaledTop + scaledSideLength / editorSize * y, scaledSideLength / editorSize, scaledSideLength / editorSize, entry[1].color);
+            drawRectangle(scaledLeft + scaledSideLength / numTiles * x, scaledTop + scaledSideLength / numTiles * y, scaledSideLength / numTiles, scaledSideLength / numTiles, entry[1].color);
         }
-        for (let x = 0; x <= editorSize; x++) {
-            drawRectangle(scaledLeft + scaledSideLength / editorSize * x, scaledTop, 1, scaledSideLength);
+        for (let x = 0; x <= numTiles; x++) {
+            drawRectangle(scaledLeft + scaledSideLength / numTiles * x, scaledTop, 1, scaledSideLength);
         }
-        for (let y = 0; y <= editorSize; y++) {
-            drawRectangle(scaledLeft, scaledTop + scaledSideLength / editorSize * y, scaledSideLength, 1);
+        for (let y = 0; y <= numTiles; y++) {
+            drawRectangle(scaledLeft, scaledTop + scaledSideLength / numTiles * y, scaledSideLength, 1);
         }
     }
 
@@ -659,10 +663,11 @@ window.onload = (function () {
             const scaledLeft = left * zoom + zoomOrigin.x;
             const scaledTop = top * zoom + zoomOrigin.y;
 
-            const xPos = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * editorSize);
-            const yPos = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * editorSize);
+            const xPos = Math.floor((mousePos.x - scaledLeft) / zoom / sideLength * numTiles);
+            const yPos = Math.floor((mousePos.y - scaledTop) / zoom / sideLength * numTiles);
 
 
+            console.log(editorTool.name);
             if (editorTool.name !== "empty") {
                 if (editorFill) {
                     editorFillTiles(getTile(xPos, yPos), xPos, yPos, editorTool);
@@ -691,14 +696,14 @@ window.onload = (function () {
         //console.log("ID: " + tyleTypeToFill.id);
         //console.log("TILE LEFT:");
         //const tf = tileX + 1 < editorSize && getTile(tileX + 1, tileY).id === tyleTypeToFill.id;
-        if (tileX + 1 < editorSize && getTile(tileX + 1, tileY).id === tyleTypeToFill.id) {
+        if (tileX + 1 < numTiles && getTile(tileX + 1, tileY).id === tyleTypeToFill.id) {
             //console.log("RIGHT ONE ID: " + getTile(tileX + 1, tileY).id + " FILL ID: " + tyleTypeToFill.id);
             //console.log("FILLING (" + (tileX + 1) + ", " + tileY+ ")");
             //console.log(getTile(tileX + 1, tileY).id);
 
             editorFillTiles(tyleTypeToFill, tileX + 1, tileY, newTile);
         }
-        if (tileY + 1 < editorSize && getTile(tileX, tileY + 1).id === tyleTypeToFill.id) {
+        if (tileY + 1 < numTiles && getTile(tileX, tileY + 1).id === tyleTypeToFill.id) {
             //console.log("FILLING (" + tileX + ", " + (tileY+1)+ ")");
             //console.log(getTile(tileX, tileY + 1).id);
             editorFillTiles(tyleTypeToFill, tileX, tileY + 1, newTile);
@@ -760,8 +765,6 @@ window.onload = (function () {
         ctx.translate(-camera.x, -camera.y);
 
         renderMap();
-        drawRectangle(0,200,100,100,"red");
-        drawRoundedRectangle(0,0,100,100,10,"red");
         drawWater();
         for (const tile of tilesBelow) {
             if (rectIntersect(tile.AABB, renderDist)) {
@@ -798,63 +801,68 @@ window.onload = (function () {
     }
 
     function renderMap() {
+        drawRectangle(-mapSizeHalf, -mapSizeHalf, mapSize, mapSize, c0); //background
+        const mainIslandRadius = mapSizeHalf * 0.8;
+        const cutoutOffsetY = mapSizeHalf * 0.6;
+        const cutoutRadius = mapSizeHalf * 0.333;
+        const bridgeLength = mapSizeHalf * 0.233;
+        const smallIslandOffsetY = mapSizeHalf * 0.633;
+        const smallIslandRadius = mapSizeHalf * 0.2;
 
-        drawRectangle(-15000, -15000, 30000, 30000, c0); //background
-
-        drawCircle(0, 0, 12400, c1); //main island 1
-        drawCircle(0, 0, 12200, c2); //main island 2
-        drawCircle(0, 0, 12100, c3); //main island 3
-        drawCircle(0, 0, 12000, is); //main island MAIN
+        drawCircle(0, 0, mainIslandRadius + 400, c1); //main island 1
+        drawCircle(0, 0, mainIslandRadius + 200, c2); //main island 2
+        drawCircle(0, 0, mainIslandRadius + 100, c3); //main island 3
+        drawCircle(0, 0, mainIslandRadius, is); //main island MAIN
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(0, 0, 12100, 0, Math.PI * 2);
+        ctx.arc(0, 0, mainIslandRadius + 100, 0, Math.PI * 2);
         ctx.clip();
-        drawCircle(0, -9000, 5200, c3); //cutout main island 3
+        drawCircle(0, -cutoutOffsetY, cutoutRadius + 200, c3); //cutout main island 3
         ctx.restore();
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(0, 0, 12200, 0, Math.PI * 2);
+        ctx.arc(0, 0, mainIslandRadius + 200, 0, Math.PI * 2);
         ctx.clip();
-        drawCircle(0, -9000, 5100, c2); //cutout main island 2
+        drawCircle(0, -cutoutOffsetY, cutoutRadius + 100, c2); //cutout main island 2
         ctx.restore();
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(0, 0, 12400, 0, Math.PI * 2);
+        ctx.arc(0, 0, mainIslandRadius + 400, 0, Math.PI * 2);
         ctx.clip();
-        drawCircle(0, -9000, 5000, c1); //cutout main island 1
+        drawCircle(0, -cutoutOffsetY, cutoutRadius, c1); //cutout main island 1
         ctx.restore();
-        drawCircle(0, -9000, 4800, c0); //cutout main island 0
+        drawCircle(0, -cutoutOffsetY, cutoutRadius - 200, c0); //cutout main island 0
 
         ctx.save();
         ctx.beginPath()
-        ctx.arc(0, -9000, 4900, 0, Math.PI * 2);
+        ctx.arc(0, -cutoutOffsetY, cutoutRadius - 100, 0, Math.PI * 2);
         ctx.clip();
-        drawRectangle(-700, -7000, 1400, 3500, c1); //bridge 1
+        drawRectangle(-700, -bridgeLength * 2, 1400, bridgeLength, c1); //bridge 1
         ctx.restore();
-        drawCircle(0, -9500, 3400, c1); //small island 1
+        drawCircle(0, -smallIslandOffsetY, smallIslandRadius + 400, c1); //small island 1
 
 
         ctx.save();
         ctx.beginPath()
-        ctx.arc(0, -9000, 5100, 0, Math.PI * 2);
+        ctx.arc(0, -cutoutOffsetY, cutoutRadius + 100, 0, Math.PI * 2);
         ctx.clip();
-        drawRectangle(-500, -7000, 1000, 3500, c2); //bridge 2
+        drawRectangle(-500, -bridgeLength * 2, 1000, bridgeLength, c2); //bridge 2
         ctx.restore();
-        drawCircle(0, -9500, 3200, c2); //small island 2
+        drawCircle(0, -smallIslandOffsetY, smallIslandRadius + 200, c2); //small island 2
 
         ctx.save()
         ctx.beginPath();
-        ctx.arc(0, -9000, 5200, 0, Math.PI * 2);
+        ctx.arc(0, -cutoutOffsetY, cutoutRadius + 200, 0, Math.PI * 2);
         ctx.clip();
-        drawRectangle(-400, -7000, 800, 3500, c3); //bridge 3
+        drawRectangle(-400, -bridgeLength * 2, 800, bridgeLength, c3); //bridge 3
         ctx.restore();
-        drawCircle(0, -9500, 3100, c3); //small island 3
+        drawCircle(0, -smallIslandOffsetY, smallIslandRadius + 100, c3); //small island 3
 
-        drawRectangle(-300, -7000, 600, 3500, is); //bridge MAIN
-        drawCircle(0, -9500, 3000, is); //small island MAIN
+        drawRectangle(-300, -bridgeLength * 2, 600, bridgeLength, is); //bridge MAIN
+        drawCircle(0, -smallIslandOffsetY, smallIslandRadius, is); //small island MAIN
 
         //ctx.globalCompositeOperation = "saturation";
         //for (let x = -15050; x < 15000; x += 100) {
@@ -1470,7 +1478,7 @@ window.onload = (function () {
                     }
                 } else if (tile.shape.shape === "rectangle") {
                     if (rectCircleIntersect(tile.AABB, attackCircle)) {
-                        mineResource(tile, client.data.heldItem.gather)
+                        mineResource(tile, client.data.heldItem.gather);
                     }
                 }
             }
@@ -1481,7 +1489,18 @@ window.onload = (function () {
     function mineResource(tile, gatherValue) {
         const countItems = gatherValue - tile.drop.gather;
         if (countItems > 0) {
-            addToInventory(tile.drop.item, countItems);
+            let x = tile.position.x;
+            let y = tile.position.y;
+            if (tile.shape.shape === "circle") {
+                x -= tileSize * 0.5;
+                y -= tileSize * 0.5;
+            }
+            x += mapSizeHalf;
+            y += mapSizeHalf;
+            x /= tileSize;
+            y /= tileSize;
+            server.emit("mine", { tile: `x${x}y${y}`, count: countItems});
+            //addToInventory(tile.drop.item, countItems);
         }
     }
 
@@ -1802,9 +1821,13 @@ window.onload = (function () {
         serverEntities = entities;
     });
 
-    server.on("interact", (data) => {
-        if (data.type === "damage") {
-            handleDamage(data.value);
+    server.on("mine", packet => {
+        addToInventory(packet.item, packet.count);
+    });
+
+    server.on("interact", packet => {
+        if (packet.type === "damage") {
+            handleDamage(packet.value);
         }
     });
 

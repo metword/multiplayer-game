@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 const socketio = require("socket.io");
 const io = socketio(server, {maxHttpBufferSize: 1e8});
 const fs = require("fs");
+const e = require("express");
 
 //const { Pool } = require("pg");
 //const local = "postgresql://postgres:password@localhost:5432/postgres";
@@ -109,6 +110,19 @@ io.on("connection", (client) => {
     // On client emit position to server
     client.on("getclientdata", client => {
         Object.assign(thisEntity, client);
+    });
+
+    client.on("mine", packet => {
+       const capacity = map[packet.tile].drop.capacity;
+        if (capacity > 0) {
+            if (capacity - packet.count >= 0) {
+                client.emit("mine", {item: map[packet.tile].drop.item, count: packet.count});
+                map[packet.tile].drop.capacity -= packet.count;
+            } else {
+                client.emit("mine", {item: map[packet.tile].drop.item, count: capacity});
+                map[packet.tile].drop.capacity = 0;
+            }
+        }
     });
 
     client.on("interact", packet => {
